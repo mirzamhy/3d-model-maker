@@ -39,7 +39,7 @@ const POSE_LABEL: Record<PoseName, string> = {
   crawl: 'Merayap',
   sit: 'Duduk',
 };
-const STYLE_LABEL: Record<Style, string> = { real: 'Semi-realistis', lowpoly: 'Low-poly', argon: 'Argon (Gemini)', import: 'Impor GLB' };
+const STYLE_LABEL: Record<Style, string> = { real: 'Semi-realistis', lowpoly: 'Low-poly', argon: 'Argon (Gemini)', zombie2: 'Zombie 2 (Argon)', import: 'Impor GLB' };
 const SCENE_LABEL: Record<SceneMode, string> = { horor: 'Horor', studio: 'Studio' };
 
 const state = {
@@ -265,7 +265,7 @@ function buttons(hostId: string, items: string[], label: (s: string) => string, 
   return render;
 }
 const needsRebuild = (a: View, b: View) => (a === '4 view' || a === 'gerombolan' || b === '4 view' || b === 'gerombolan') && a !== b;
-const syncStyle = buttons('styles', ['real', 'lowpoly', 'argon', 'import'], (k) => STYLE_LABEL[k as Style], () => state.style, (k) => {
+const syncStyle = buttons('styles', ['real', 'lowpoly', 'argon', 'zombie2', 'import'], (k) => STYLE_LABEL[k as Style], () => state.style, (k) => {
   if (k === 'import' && !hasImport()) {
     glbFile.click();
     return;
