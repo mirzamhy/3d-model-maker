@@ -1,0 +1,56 @@
+{
+  "subjek": "zombie pria dewasa berpakaian kantor (jas, rompi, kemeja, dasi, celana panjang, sepatu kulit)",
+  "sumber": "docs/ref/referensi-zombie-jas-chatgpt.webp (lembar MODE ANALISIS dari ChatGPT) dibaca oleh Claude",
+  "modul": "M1",
+  "tingkat_detail": "T3",
+  "jangkar_skala": { "deskripsi": "tinggi total pada lembar", "meter": 1.78 },
+  "catatan_skala": "Skeleton proyek 1.82 m. Selisih 2%, bagian tubuh memakai tulang skeleton apa adanya (REAL_BONE_DEFS), tidak diskalakan.",
+  "sumbu": "+Y atas, +Z depan, +X kiri zombie, T-pose",
+  "dimensi_lembar_m": {
+    "tinggi_total": 1.78, "rentang_tangan": 1.82, "tinggi_kepala": 0.24, "lebar_kepala": 0.15,
+    "lebar_bahu": 0.46, "lengan_atas": 0.30, "lengan_bawah": 0.26, "tangan": 0.18,
+    "torso_leher_ke_pinggul": 0.58, "lebar_pinggul": 0.36, "paha": 0.44, "betis": 0.42, "kaki_sepatu": 0.28
+  },
+  "palet_hex": {
+    "kulit": "#B8B6AB", "rambut_lembar": "#756E64", "rambut_dipakai": "#5E5144 (gelap, sesuai gambar)",
+    "jas": "#9A9A9A", "rompi": "#6B6B6B", "kemeja": "#E6E2DC", "dasi": "#4B3B2D", "celana": "#3E3E3E",
+    "sepatu_lembar": "#2C2C2C", "sepatu_dipakai": "#33261F (cokelat tua, sesuai gambar)"
+  },
+  "bagian": {
+    "kepala": {
+      "bentuk": "wajah manusia pucat kehijauan, tirus, pipi cekung, rongga mata gelap, hidung utuh (bukan lubang)",
+      "mata": "putih susu keruh, tidak fokus, iris abu pucat, tanpa pupil tajam",
+      "mulut": "tampak depan: tertutup atau menyeringai sedikit; gigi kuning kusam, tidak rata, sebagian patah, bibir tipis kering (ada bibir, tidak sepenuhnya hilang)",
+      "rambut": "cokelat tua, acak-acakan, panjang 5 sampai 9 cm, jatuh ke dahi (poni tidak rata), menutup telinga bagian atas, lebih tebal di belakang dan samping, tidak ada helaian panjang lebih dari leher"
+    },
+    "tangan": "kurus, tulang dan urat menonjol, jari panjang dan terpisah, buku jari jelas, kuku kusam kekuningan, kulit pucat kehijauan",
+    "kulit": "pucat abu-kehijauan, kering dan retak halus, pori terlihat, bintik kecokelatan, tanpa darah"
+  },
+  "pakaian": {
+    "jas": {
+      "warna": "#9A9A9A kusam, bahan wol berserat", "potongan": "jas dua kancing, terbuka di depan, lapel bergerigi (notch), bahu sedikit bidang, panjang sampai pangkal paha",
+      "lengan": "sampai pergelangan, manset terlihat kemeja sedikit",
+      "kerusakan": "aus dan sobek kecil di siku dan lengan atas, tepi serat keluar, noda cokelat kemerahan kecil dan kotoran di dada serta bahu, lipatan kusut di siku dan perut"
+    },
+    "rompi": { "warna": "#6B6B6B", "potongan": "V rendah, 5 kancing, panjang sampai pinggang, menutup perut", "kerusakan": "kusut, noda tipis" },
+    "kemeja": { "warna": "#E6E2DC kotor kekuningan", "potongan": "kerah klasik berdiri, terlihat di antara lapel dan rompi, lengan panjang di dalam jas", "kerusakan": "noda cokelat kemerahan kecil, kusut" },
+    "dasi": { "warna": "#4B3B2D", "bentuk": "dasi panjang, simpul longgar sedikit miring, ujung menggantung di atas rompi, kusut" },
+    "celana": {
+      "warna": "#3E3E3E", "potongan": "celana kain lurus, panjang sampai tumit, lipatan di depan",
+      "kerusakan": "bolong dan robek di kedua lutut (kulit kelihatan), serat benang di tepi bawah yang berumbai dan sobek, noda tanah"
+    },
+    "sabuk": "kulit hitam kecokelatan, gesper logam kusam kecil",
+    "sepatu": { "warna": "#33261F", "bentuk": "oxford kulit bertali, ujung membulat, hak rendah, lecet dan kusam", "ukuran_m": 0.28 }
+  },
+  "poin_kritis": [
+    "Wajah manusia tirus dan seram tanpa darah, bukan tengkorak.",
+    "Rambut harus terlihat sebagai massa helaian acak, bukan topi.",
+    "Jas terbuka: lapel, rompi berkancing, kemeja dan dasi harus terlihat jelas berlapis.",
+    "Lutut celana bolong dan tepi bawah berumbai."
+  ],
+  "asumsi": [
+    "Kedalaman rongga mata -2.5 cm, tulang pipi +1 cm, pipi -1.5 cm (dari profil samping, perkiraan).",
+    "Bagian belakang jas polos dengan satu belahan tengah (tidak terlihat jelas di gambar).",
+    "Tidak ada tampak atas, jadi bentuk puncak kepala dan bahu dari atas diasumsikan oval."
+  ]
+}
