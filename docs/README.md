@@ -16,6 +16,7 @@ Folder ini adalah brief lengkap untuk AI (Claude, Gemini, dll.) yang akan membua
 | 7 | [07-proses-pembuatan.md](07-proses-pembuatan.md) | Catatan kerja nyata: urutan langkah, angka wajah, shader, hitungan pose, masalah + perbaikan |
 | 8 | [08-eksperimen-argon.md](08-eksperimen-argon.md) | Eksperimen: Gemini Argon membuat model dari dokumen 07, hasil per ronde dan pelajarannya |
 | 9 | [09-impor-mesh-ai.md](09-impor-mesh-ai.md) | Jembatan: GLB dari generator AI (Modly, Tripo, dll.) dipasang ke rig 66 tulang dengan bobot otomatis |
+| – | [PANDUAN-AI-MODEL-3D.md](PANDUAN-AI-MODEL-3D.md) | **Panduan umum untuk AI**: gambar referensi + satu kalimat + file ini → AI memilih modul (karakter, makhluk, objek, kendaraan, pesawat/kapal, bangunan, alam) lalu membangun model |
 
 Gambar:
 
