@@ -38,7 +38,7 @@ const POSE_LABEL: Record<PoseName, string> = {
   crawl: 'Merayap',
   sit: 'Duduk',
 };
-const STYLE_LABEL: Record<Style, string> = { real: 'Semi-realistis', lowpoly: 'Low-poly' };
+const STYLE_LABEL: Record<Style, string> = { real: 'Semi-realistis', lowpoly: 'Low-poly', argon: 'Argon (Gemini)' };
 const SCENE_LABEL: Record<SceneMode, string> = { horor: 'Horor', studio: 'Studio' };
 
 const state = {
@@ -264,7 +264,7 @@ function buttons(hostId: string, items: string[], label: (s: string) => string, 
   return render;
 }
 const needsRebuild = (a: View, b: View) => (a === '4 view' || a === 'gerombolan' || b === '4 view' || b === 'gerombolan') && a !== b;
-const syncStyle = buttons('styles', ['real', 'lowpoly'], (k) => STYLE_LABEL[k as Style], () => state.style, (k) => {
+const syncStyle = buttons('styles', ['real', 'lowpoly', 'argon'], (k) => STYLE_LABEL[k as Style], () => state.style, (k) => {
   state.style = k as Style;
   rebuild();
 });

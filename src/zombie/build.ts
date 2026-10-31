@@ -8,12 +8,13 @@ import { head } from './parts/head';
 import { realHand, realNeckChest } from './real/body';
 import { realJacket, realPants, realShirt, realShoes } from './real/clothes';
 import { realHead } from './real/head';
+import { buildArgon } from './argon/zombie';
 import { realMaterial } from './real/materials';
 import { makeVariant, type RCtx } from './real/variant';
 import { BONE_DEFS, buildSkeleton } from './skeleton';
 import { REAL_BONE_DEFS } from './skeletonReal';
 
-export type Style = 'real' | 'lowpoly';
+export type Style = 'real' | 'lowpoly' | 'argon';
 
 export interface Rig {
   root: Group;
@@ -102,10 +103,10 @@ function buildReal(seed: number) {
 }
 
 export function buildZombie(seed = 1, style: Style = 'real'): Rig {
-  const { skel, mb, geometry, material } = style === 'real' ? buildReal(seed) : buildLowpoly(seed);
+  const { skel, mb, geometry, material } = style === 'real' ? buildReal(seed) : style === 'argon' ? buildArgon(seed) : buildLowpoly(seed);
   const mesh = new SkinnedMesh(geometry, material);
   mesh.castShadow = true;
-  mesh.receiveShadow = style === 'real';
+  mesh.receiveShadow = style !== 'lowpoly';
   mesh.frustumCulled = false;
   mesh.name = `zombie_${style}_${seed}`;
   mesh.add(skel.bones[0]);
