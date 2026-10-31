@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Zombie Model Maker</title>
+    <link rel="stylesheet" href="/src/viewer/style.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <div id="labels"></div>
+      <div id="title"><b>ZOMBIE</b><span>RIG STRUCTURE</span></div>
+    </div>
+    <aside id="panel">
+      <section>
+        <h3>Gaya model</h3>
+        <div class="row" id="styles"></div>
+      </section>
+      <section>
+        <h3>Scene</h3>
+        <div class="row" id="scenes"></div>
+      </section>
+      <section>
+        <h3>Pose</h3>
+        <div class="row" id="poses"></div>
+      </section>
+      <section>
+        <h3>Tampilan</h3>
+        <div class="row" id="views"></div>
+      </section>
+      <section>
+        <h3>Layer</h3>
+        <label><input type="checkbox" id="rig" /> Rig + kontrol</label>
+        <label><input type="checkbox" id="labelsOn" checked /> Label sendi</label>
+        <label><input type="checkbox" id="xray" /> X-ray (mesh transparan)</label>
+        <label><input type="checkbox" id="spin" /> Putar otomatis</label>
+      </section>
+      <section>
+        <h3>Seed variasi</h3>
+        <div class="row"><input type="number" id="seed" value="7" min="1" /><button id="rand">Acak</button></div>
+      </section>
+      <section>
+        <h3>Ekspor</h3>
+        <div class="row"><button id="png">Simpan PNG</button><button id="glb">Simpan GLB</button></div>
+        <p class="hint">Disimpan ke folder <code>renders/</code>.</p>
+      </section>
+      <section id="stats"></section>
+    </aside>
+    <script type="module" src="/src/viewer/main.ts"></script>
+  </body>
+</html>
