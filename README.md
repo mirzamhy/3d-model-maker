@@ -1,9 +1,11 @@
 # Model 3D Maker — Zombie Prosedural
 
-Zombie yang dibangun prosedural dengan TypeScript + Three.js, dalam dua gaya:
+Zombie yang dibangun prosedural dengan TypeScript + Three.js, dalam empat gaya:
 
 - **Semi-realistis** (default): ±17k segitiga, 66 tulang (5 jari), wajah tengkorak dengan rahang berengsel dan gigi terbuka, jaket terbuka dengan kerah, kaus V-neck, celana panjang dengan saku, sepatu. Detail pori kulit, lipatan kulit jaket, dan serat kain dibuat oleh shader noise (tanpa tekstur). Warna kulit, jaket, kaus, celana berubah per seed.
 - **Low-poly**: ±2k segitiga, 58 tulang, faceted.
+- **Argon (Gemini)**: eksperimen, model yang ditulis AI lain dari dokumen proses (docs/08).
+- **Impor GLB**: mesh T-pose dari generator AI (Modly, Tripo, Meshy) dipasang ke rig 66 tulang dengan bobot otomatis (docs/09). Seret file .glb ke layar.
 
 Pose: T-pose, idle bungkuk, jalan, meraih, menyerang, menerkam, meraung, merayap, duduk. Scene: horor (gelap, kabut, lampu sorot) atau studio. Tampilan: depan/kiri/belakang/kanan/bebas, close-up wajah, 4 view, gerombolan (5 zombie).
 
