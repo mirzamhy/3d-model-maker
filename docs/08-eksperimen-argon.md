@@ -39,3 +39,32 @@ Hasilnya dipasang sebagai gaya ketiga **"Argon (Gemini)"** di viewer, sehingga m
 - Jaket kaku seperti kotak, dengan kerah bersilang.
 - Darah di kaus masih berbentuk kotak-kotak.
 - Lengan masih tabung polos tanpa lipatan.
+
+---
+
+## Zombie 2: dibangun Argon dari lembar referensi ChatGPT
+
+Alur dua tahap dari [PANDUAN-AI-MODEL-3D.md](PANDUAN-AI-MODEL-3D.md): ChatGPT (MODE ANALISIS) membuat lembar referensi dari foto ([referensi-zombie-jas-chatgpt.webp](ref/referensi-zombie-jas-chatgpt.webp)), lalu Argon membangun modelnya (MODE BUILD).
+
+| Langkah | Isi |
+|---|---|
+| Spesifikasi | [spec/zombie2.spec.json](../spec/zombie2.spec.json): angka dari lembar, palet hex, deskripsi bagian, daftar asumsi. Argon tidak bisa melihat gambar, jadi spesifikasi ini yang dikirim sebagai teks. |
+| Basis | `src/zombie/argon/zombie2.ts`, dimulai dari hasil Argon ronde 3 (kepala dan badan), dipecah menjadi fungsi `buildHead`, `buildHair`, `buildBody`, `buildInner`, `buildSuit`, `buildLower`. |
+| Ronde per bagian | `tools/argon/zombie2/z2-*.md` berisi pesan yang dikirim: rambut (3 ronde), jas dan lengan, rompi + kemeja + dasi, celana + ikat pinggang + sepatu. Tiap pesan memuat deskripsi visual keadaan sekarang, target, angka, dan daftar API. |
+| Perbaikan sendiri | Warna diturunkan sekitar 12% (cahaya membuat warna pucat berlebih terang), lebar lapel dikurangi. |
+
+Hasil: 34.900 segitiga, 66 tulang, rig dan semua pose jalan, tombol **Zombie 2 (Argon)** di viewer. Render: `renders/z2_*.png`.
+
+**Yang berhasil:** jas dengan bahu, kerah, lapel, manset, dan robekan siku; rompi, kemeja, dasi; celana dengan lipatan dan lutut bolong; sepatu Oxford bertali; rambut menutup kepala. Tampilan gerombolan terbaca sebagai zombie berjas.
+
+**Yang masih kurang dibanding lembar referensi:**
+- Wajah: kulit terlalu putih dan rata, rahang bawah tampak seperti janggut putih, poni terlihat seperti kacang panjang. Belum ada kesan wajah manusia yang tirus.
+- Rambut berupa gumpalan elips, bukan helai.
+- Lapel masih agak lebar, lubang lutut tampak seperti tambalan karena kulit di bawahnya hampir sewarna.
+- Garis rambut di dahi masih bergerigi.
+- Detail kecil di lembar (retak kulit, jahitan, noda halus) belum ada.
+
+**Pelajaran tambahan:**
+- Pesan paling efektif memuat: keadaan sekarang dalam kata-kata ("jas seperti kotak abu-abu tanpa kerah"), target, tabel stasiun berangka, dan batas baris (≤ 150).
+- Kamera "wajah" memakai posisi kepala dari pose sebelumnya. Saat mengambil render, panggil `__zm.set(...)` dua kali bila pose dan tampilan berubah bersamaan.
+- Server proxy Argon bisa mati sendiri. Jalankan lagi dengan `gemini-web2api.exe --port 8081 --cookie-file cookie.txt`.
