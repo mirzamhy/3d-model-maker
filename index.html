@@ -17,6 +17,19 @@
         <div class="row" id="styles"></div>
       </section>
       <section>
+        <h3>Impor mesh AI (GLB)</h3>
+        <div class="row"><button id="glbLoad">Muat GLB…</button><input type="file" id="glbFile" accept=".glb,.gltf" hidden /></div>
+        <div class="row fit">
+          <label>Tinggi <input type="number" id="fitH" step="0.01" value="1.82" /></label>
+          <label>Geser Y <input type="number" id="fitDy" step="0.01" value="0" /></label>
+          <label>Geser Z <input type="number" id="fitDz" step="0.01" value="0" /></label>
+          <label>Putar Y° <input type="number" id="fitRy" step="5" value="0" /></label>
+          <label>Putar X° <input type="number" id="fitRx" step="90" value="0" /></label>
+          <button id="fitApply">Terapkan</button>
+        </div>
+        <p class="hint" id="importInfo">Seret file .glb ke layar, atau klik Muat GLB. Model harus T-pose, menghadap +Z.</p>
+      </section>
+      <section>
         <h3>Scene</h3>
         <div class="row" id="scenes"></div>
       </section>

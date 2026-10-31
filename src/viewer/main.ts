@@ -22,6 +22,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { buildZombie, setXray, type Rig, type Style } from '../zombie/build';
 import { applyPose, POSES, type PoseName } from '../zombie/pose';
+import { fittedBounds, getImportName, getImportOpts, hasImport, lastReport, loadGlb, setImportOpts } from '../zombie/import/importMesh';
 import { RigOverlay } from './overlay';
 
 type View = 'depan' | 'kiri' | 'belakang' | 'kanan' | 'bebas' | 'wajah' | '4 view' | 'gerombolan';
@@ -38,7 +39,7 @@ const POSE_LABEL: Record<PoseName, string> = {
   crawl: 'Merayap',
   sit: 'Duduk',
 };
-const STYLE_LABEL: Record<Style, string> = { real: 'Semi-realistis', lowpoly: 'Low-poly', argon: 'Argon (Gemini)' };
+const STYLE_LABEL: Record<Style, string> = { real: 'Semi-realistis', lowpoly: 'Low-poly', argon: 'Argon (Gemini)', import: 'Impor GLB' };
 const SCENE_LABEL: Record<SceneMode, string> = { horor: 'Horor', studio: 'Studio' };
 
 const state = {
@@ -264,7 +265,11 @@ function buttons(hostId: string, items: string[], label: (s: string) => string, 
   return render;
 }
 const needsRebuild = (a: View, b: View) => (a === '4 view' || a === 'gerombolan' || b === '4 view' || b === 'gerombolan') && a !== b;
-const syncStyle = buttons('styles', ['real', 'lowpoly', 'argon'], (k) => STYLE_LABEL[k as Style], () => state.style, (k) => {
+const syncStyle = buttons('styles', ['real', 'lowpoly', 'argon', 'import'], (k) => STYLE_LABEL[k as Style], () => state.style, (k) => {
+  if (k === 'import' && !hasImport()) {
+    glbFile.click();
+    return;
+  }
   state.style = k as Style;
   rebuild();
 });
@@ -297,6 +302,50 @@ document.getElementById('rand')!.onclick = () => {
   seedEl.value = String(state.seed);
   rebuild();
 };
+// ---------- import GLB ----------
+const importInfo = document.getElementById('importInfo')!;
+const num = (id: string) => document.getElementById(id) as HTMLInputElement;
+function syncImportUi() {
+  const o = getImportOpts();
+  num('fitH').value = String(o.height);
+  num('fitDy').value = String(o.dy);
+  num('fitDz').value = String(o.dz);
+  num('fitRy').value = String(o.rotY);
+  num('fitRx').value = String(o.rotX);
+  const r = lastReport();
+  if (r) importInfo.innerHTML = `<b>${r.name}</b>: ${r.triangles.toLocaleString('id-ID')} segitiga, ${r.materials} material, bobot dihitung ${r.ms} ms${r.smoothed ? '' : ' (tanpa smoothing)'}`;
+}
+async function importGlb(data: ArrayBuffer | string, name: string) {
+  importInfo.textContent = 'Memuat ' + name + '…';
+  try {
+    await loadGlb(data, name);
+    state.style = 'import';
+    rebuild();
+    syncStyle();
+    syncImportUi();
+  } catch (e) {
+    importInfo.textContent = 'Gagal: ' + (e as Error).message;
+  }
+}
+const glbFile = document.getElementById('glbFile') as HTMLInputElement;
+document.getElementById('glbLoad')!.onclick = () => glbFile.click();
+glbFile.onchange = async () => {
+  const f = glbFile.files?.[0];
+  if (f) await importGlb(await f.arrayBuffer(), f.name);
+  glbFile.value = '';
+};
+stage.addEventListener('dragover', (e) => e.preventDefault());
+stage.addEventListener('drop', async (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer?.files?.[0];
+  if (f && /\.(glb|gltf)$/i.test(f.name)) await importGlb(await f.arrayBuffer(), f.name);
+});
+document.getElementById('fitApply')!.onclick = () => {
+  setImportOpts({ height: Number(num('fitH').value) || 1.82, dy: Number(num('fitDy').value) || 0, dz: Number(num('fitDz').value) || 0, rotY: Number(num('fitRy').value) || 0, rotX: Number(num('fitRx').value) || 0 });
+  if (state.style === 'import') rebuild();
+  syncImportUi();
+};
+
 document.getElementById('png')!.onclick = () => capture(`zombie_${state.style}_${state.pose}_${state.view.replace(' ', '')}_s${state.seed}`);
 document.getElementById('glb')!.onclick = () => exportGlb(`zombie_${state.style}_s${state.seed}`);
 
@@ -390,6 +439,15 @@ async function exportGlb(name: string) {
   },
   capture,
   exportGlb,
+  loadGlb: async (url: string, opts?: Parameters<typeof setImportOpts>[0]) => {
+    await importGlb(url, url.split('/').pop() ?? 'model.glb');
+    if (opts) {
+      setImportOpts(opts);
+      rebuild();
+      syncImportUi();
+    }
+    return { name: getImportName(), report: lastReport(), bounds: fittedBounds() };
+  },
   stats: () => actors[0].rig.stats,
   actors: () => actors,
 };
