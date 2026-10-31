@@ -14,6 +14,7 @@ Folder ini adalah brief lengkap untuk AI (Claude, Gemini, dll.) yang akan membua
 | 5 | [05-struktur-file-dan-alur.md](05-struktur-file-dan-alur.md) | Struktur folder kode + alur kerja per fase + checklist |
 | 6 | [06-sumber.md](06-sumber.md) | Daftar jurnal, spesifikasi, dan repo GitHub |
 | 7 | [07-proses-pembuatan.md](07-proses-pembuatan.md) | Catatan kerja nyata: urutan langkah, angka wajah, shader, hitungan pose, masalah + perbaikan |
+| 8 | [08-eksperimen-argon.md](08-eksperimen-argon.md) | Eksperimen: Gemini Argon membuat model dari dokumen 07, hasil per ronde dan pelajarannya |
 
 Gambar:
 
