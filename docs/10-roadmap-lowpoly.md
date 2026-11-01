@@ -218,7 +218,26 @@ Wajib: panggil `driveHelpers(rig)` setiap frame setelah pose (viewer dan uji sud
 - Kepal: beres. Penyebabnya bobot loop buku jari 70 % di tangan, jadi akar jari terlipat menembus punggung tangan. Diturunkan ke 20 % (`TUNE.knuckle`): kepal penuh 70 → 2 tabrakan (pria), 61 → 3 (wanita); setengah kepal 38 → 2.
 - Celah tipis di sudut dalam bahu belakang saat lengan ke belakang/turun: tinggal garis gelap sempit di tepi lubang lengan, mesh tetap tertutup. Dibiarkan; topologi lubang 3×2 baru dikerjakan bila terlihat mengganggu di model akhir.
 
-## 9. Catatan
+## 9. Hasil F5 (kecocokan siluet / "training")
+
+**Alat.** `tools/ref/summarize.mjs` juga menulis `src/zombie/lowbody/refSil.json` (18 referensi dewasa, baris siluet dan profil torso sebagai bagian dari tinggi badan; anak dan 3 model tak berkelompok dilewati; model berhelm/rambut dipotong di sendi kepala). `silhouette.ts` menghitung skor IoU depan (setengah lebar) dan samping (depan+belakang) per baris: kaki dari irisan seluruh badan di bawah 0.5 H, badan dan kepala dari irisan segitiga tulang torso (lengan tidak ikut, seperti pengukuran referensi; tulang bahu dan `ArmHelper` dihitung torso karena torso referensi memuat bahu). `fit.ts` mencari pengali lebar/kedalaman torso di 6 tinggi dan skala kaki dengan coordinate descent.
+
+Jalankan dari halaman: `__zm.silScore()` (skor badan sekarang), `__zm.fitGroup('male')` (cari ulang; tempel hasil `t` ke `FIT_MALE`), `__zm.fitGroup('female', 'casual_Female_G')` (fit ke satu referensi), `__zm.trunkCurves(group, name)` (lebar kita vs referensi per tinggi).
+
+**Hasil (rata-rata IoU depan/samping terhadap 9 referensi per kelompok):**
+
+| | sebelum fit | sesudah fit |
+|---|---|---|
+| pria | 0.904 | 0.910 |
+| wanita | 0.861 | 0.866 |
+
+- Perbandingan awal salah: bahu pada tulang lengan kita tidak dihitung sebagai torso sehingga lebar bahu tampak 0.07 H lebih sempit. Setelah tulang bahu dihitung, pria dari 0.879 ke 0.904.
+- **Target ≥ 0.9 untuk satu badan rata-rata tidak realistis untuk wanita.** Referensi wanita saling berbeda: IoU torso antar-referensi hanya 0.83 depan / 0.77 samping, dan rata-rata sempurna terhadap tiap referensi paling tinggi ≈ 0.88 / 0.84. Badan wanita kita (0.866) sudah di batas itu. Pria: batas ≈ 0.92, kita 0.910.
+- **Kemampuan generator diuji dengan fit per referensi** (parameter bebas untuk tiap referensi): rata-rata 0.882 → 0.921, 17 dari 18 ≥ 0.90 (terendah elder_Female_A 0.867, badannya bungkuk). Jadi jaring ini bisa meniru tiap referensi; bedanya hanya parameter.
+- Parameter fit per referensi berisik (banyak menempel ke batas 0.83/1.17), jadi tidak dipakai langsung sebagai rentang slider F4. F4 sebaiknya memakai beberapa skalar global (tinggi, lebar bahu, pinggul, tebal), bukan 18 pengali tinggi.
+- Yang dikunci: `FIT_MALE`/`FIT_FEMALE` di `body.ts`, dicampur menurut femininity. Paling jelas: kaki 12 % terlalu lebar (`legW` 0.876 untuk keduanya) dan pinggang 6 % terlalu lebar. Baterai pose F3 diulang: tidak ada regresi, mesh tetap tertutup.
+
+## 10. Catatan
 
 - Lisensi pack referensi belum dicek. Selama masih dipakai sebagai angka acuan (F0), aman. Mesh-nya jangan dimasukkan ke repo.
 - Model "Argon (Gemini)" dan "Low-poly" lama tetap ada untuk perbandingan.

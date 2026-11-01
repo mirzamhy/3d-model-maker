@@ -1,4 +1,4 @@
-# Handoff: low-poly base bodies (F0–F3 done, next F4)
+# Handoff: low-poly base bodies (F0–F3 and F5 done, next F4)
 
 Written 2026-11-01. Read this first in a new session. It stands on its own and explains both what was decided and why. More detail is in `docs/10-roadmap-lowpoly.md`.
 
@@ -35,7 +35,8 @@ Test poses: `Jalan normal` (hwalk), `Jongkok` (squat), `Angkat tangan` (armsup),
 | F1 rig + proportions | done |
 | F2 closed body | first version done, with 5 fingers |
 | F3 weights + automated motion tests | done (see roadmap §8; a thin slit at the arm hole remains) |
-| F4 female/body sliders, F5 silhouette "training", F6 head, F7 accessories/zombie, F8 GLB + Mixamo test | not started |
+| F5 silhouette "training" | done (roadmap §9; male 0.910, female 0.866 mean IoU, near the ceiling set by the references' own spread) |
+| F4 body sliders, F6 head, F7 accessories/zombie, F8 GLB + Mixamo test | not started |
 
 Current numbers: 1556 tris per body, 63 bones + 10 helper bones (driven by `driveHelpers`). F3 added `poseTest.ts`, `helpers.ts` and `__zm.poseTest/holdTest/skin`. `checkClosed` reports 0 open, 0 doubled and 0 flipped edges for both male and female.
 

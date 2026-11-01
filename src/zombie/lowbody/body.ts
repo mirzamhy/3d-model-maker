@@ -39,6 +39,13 @@ const TUNE_DEFAULT = {
   armRoot: [0.85, 0.15], // first arm ring without helpers: Arm, Shoulder
   helpers: true,
   armHelper: 0.3, // first arm ring past the joint ring: share of the shoulder helper
+  // F5 silhouette fit: trunk width/depth multipliers at the knot heights below (share of stature), legs W (side to
+  // side) and D (front to back)
+  halfMul: [1, 1, 1, 1, 1, 1],
+  frontMul: [1, 1, 1, 1, 1, 1],
+  backMul: [1, 1, 1, 1, 1, 1],
+  legW: 1,
+  legD: 1,
   knuckle: 0.2, // knuckle loop: share of the hand (rest goes to the finger roots)
   jointRing: 0.05, // extra ring on the shoulder joint (0 = none)
   rootF: 0.3,
@@ -47,6 +54,32 @@ const TUNE_DEFAULT = {
   twist: [0.3, 1, 0.4], // forearm twist bone share: mid forearm, wrist side, wrist ring
 };
 let TUNE = TUNE_DEFAULT;
+export const FIT_KNOTS = [0.5, 0.62, 0.74, 0.82, 0.9, 0.96];
+const knotMul = (arr: number[], f: number) => {
+  if (f <= FIT_KNOTS[0]) return arr[0];
+  for (let i = 1; i < FIT_KNOTS.length; i++) if (f <= FIT_KNOTS[i]) return arr[i - 1] + (arr[i] - arr[i - 1]) * (f - FIT_KNOTS[i - 1]) / (FIT_KNOTS[i] - FIT_KNOTS[i - 1]);
+  return arr[arr.length - 1];
+};
+export type FitTune = Partial<typeof TUNE_DEFAULT>;
+
+/**
+ * F5 result: silhouette fit of the group averages (fit.ts, mean IoU against the references of the group,
+ * 0.904 -> 0.910 male, 0.861 -> 0.866 female). Blended by femininity.
+ */
+export const FIT_MALE = {
+  halfMul: [0.979, 0.94, 1, 0.859, 1.06, 1.06], frontMul: [0.979, 0.94, 1.025, 0.901, 1, 1.06], backMul: [1, 1.06, 1, 1, 0.996, 1.124], legW: 0.876, legD: 1.037,
+};
+export const FIT_FEMALE = {
+  halfMul: [1.004, 0.94, 0.94, 0.94, 0.968, 1.099], frontMul: [1.124, 0.915, 1, 1, 0.924, 1], backMul: [1.085, 0.961, 1, 1.06, 0.936, 1.152], legW: 0.876, legD: 0.984,
+};
+const mixArr = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t);
+export const fitFor = (f: number) => ({
+  halfMul: mixArr(FIT_MALE.halfMul, FIT_FEMALE.halfMul, f),
+  frontMul: mixArr(FIT_MALE.frontMul, FIT_FEMALE.frontMul, f),
+  backMul: mixArr(FIT_MALE.backMul, FIT_FEMALE.backMul, f),
+  legW: FIT_MALE.legW + (FIT_FEMALE.legW - FIT_MALE.legW) * f,
+  legD: FIT_MALE.legD + (FIT_FEMALE.legD - FIT_MALE.legD) * f,
+});
 
 const spow = (x: number, e: number) => Math.sign(x) * Math.pow(Math.abs(x), e);
 
@@ -216,6 +249,12 @@ function buildBody(spec: BodySpec, skel: Skel) {
     // light smoothing along the height removes steps between the 1 % measurement rows
     const q = [trunkAt(spec.trunk, y - d), trunkAt(spec.trunk, y), trunkAt(spec.trunk, y + d)];
     const s = { front: (q[0].front + 2 * q[1].front + q[2].front) / 4, back: (q[0].back + 2 * q[1].back + q[2].back) / 4, half: (q[0].half + 2 * q[1].half + q[2].half) / 4 };
+    {
+      const f = y / H;
+      s.half *= knotMul(TUNE.halfMul, f);
+      s.front *= knotMul(TUNE.frontMul, f);
+      s.back *= knotMul(TUNE.backMul, f);
+    }
     // below the hip joint the trunk cut misses the thigh triangles; the pelvis must still wrap both thigh tops
     if (y < J.Hips.y) {
       const th = boneAt(spec.sections.LeftUpLeg, 0.15);
@@ -344,7 +383,9 @@ function buildBody(spec: BodySpec, skel: Skel) {
       // near-zero or negative radius; keep every radius at least 45 % of the mean
       const mean = (q.front + q.back + q.out + q.in) / 4;
       const fl = (x: number) => Math.max(x, 0.45 * mean) * k;
-      return { front: fl(q.front), back: fl(q.back), out: fl(q.out), in: fl(q.in) };
+      const leg = st.ref === 'UpLeg' || st.ref === 'Leg';
+      const kw = leg ? TUNE.legW : 1, kd = leg ? TUNE.legD : 1;
+      return { front: fl(q.front) * kd, back: fl(q.back) * kd, out: fl(q.out) * kw, in: fl(q.in) * kw };
     });
     for (let pass = 0; pass < 2; pass++) {
       secs = secs.map((q, i) => {
@@ -538,8 +579,8 @@ const SKIN = new Color('#c99a7c');
 
 export interface LowTopo { pos: Vector3[]; tris: number[][]; weights: Weights[]; rings: Record<string, number[]> }
 
-export function buildLowBody(seed: number, femininity: number) {
-  TUNE = { ...TUNE_DEFAULT, ...((globalThis as unknown as { __lbTune?: Partial<typeof TUNE_DEFAULT> }).__lbTune ?? {}) };
+export function buildLowBody(seed: number, femininity: number, tune?: FitTune) {
+  TUNE = { ...TUNE_DEFAULT, ...fitFor(femininity), ...((globalThis as unknown as { __lbTune?: Partial<typeof TUNE_DEFAULT> }).__lbTune ?? {}), ...(tune ?? {}) };
   const spec = bodySpec(femininity);
   const skel = buildSkeleton(lowBoneDefs(spec));
   const T = buildBody(spec, skel);

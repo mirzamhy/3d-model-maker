@@ -24,6 +24,10 @@ import { buildZombie, setXray, type Rig, type Style } from '../zombie/build';
 import { applyPose, POSE_TESTS, POSES, resetPose, type PoseName } from '../zombie/pose';
 import { runPoseTests, skinPositions, summarise } from '../zombie/lowbody/poseTest';
 import { driveHelpers } from '../zombie/lowbody/helpers';
+import { scoreBody, trunkCurves } from '../zombie/lowbody/silhouette';
+import { buildLowBody, type FitTune } from '../zombie/lowbody/body';
+import { bodySpec } from '../zombie/lowbody/bodySpec';
+import { fitGroup } from '../zombie/lowbody/fit';
 import { fittedBounds, getImportName, getImportOpts, hasImport, lastReport, loadGlb, setImportOpts } from '../zombie/import/importMesh';
 import { RigOverlay } from './overlay';
 
@@ -494,6 +498,33 @@ async function exportGlb(name: string) {
     (globalThis as unknown as { __lowbodyPoseTest: unknown }).__lowbodyPoseTest = out;
     frame(0);
     return out;
+  },
+  /** F5: build one body with a tune and return its silhouette score (no viewer rebuild). */
+  fitEval(group: 'male' | 'female', tune: FitTune, only?: string) {
+    const f = group === 'female' ? 1 : 0;
+    const b = buildLowBody(1, f, tune);
+    const topo = b.geometry.userData.lowTopo;
+    const r = scoreBody(topo, b.skel.defs.map((d: { name: string }) => d.name), bodySpec(f).height, group, only);
+    b.geometry.dispose();
+    return { front: r.front, side: r.side, total: r.total, closed: b.check.closed, parts: r.per[0] ? { legs: r.per[0].legs, trunk: r.per[0].trunk } : null };
+  },
+  trunkCurves(group: 'male' | 'female', name: string, tune: FitTune = {}) {
+    const f = group === 'female' ? 1 : 0;
+    const b = buildLowBody(1, f, tune);
+    return trunkCurves(b.geometry.userData.lowTopo, b.skel.defs.map((d: { name: string }) => d.name), bodySpec(f).height, name);
+  },
+  fitGroup,
+  refNames: () => import('../zombie/lowbody/silhouette').then((m) => m.REF_SIL.map((r) => [r.name, r.group, r.headwear])),
+  /** F5 silhouette scores (IoU against the reference groups) of the low-poly bodies. */
+  silScore() {
+    return actors.map((a) => {
+      const topo = a.rig.mesh.geometry.userData.lowTopo;
+      const H = a.rig.stats.height / (a.rig.root.scale.x || 1);
+      const g = (a.rig.femininity ?? 0) > 0.5 ? 'female' : 'male';
+      const names = a.rig.mesh.skeleton.bones.map((b) => b.name);
+      const r = scoreBody(topo, names, H, g);
+      return { ...r, per: r.per.map((p) => ({ ...p, front: +p.front.toFixed(3), side: +p.side.toFixed(3), total: +p.total.toFixed(3) })) };
+    });
   },
   /** Skinned vertex positions of figure i in its current pose (low-poly body only), for ad-hoc checks. */
   skin(i = 0) {

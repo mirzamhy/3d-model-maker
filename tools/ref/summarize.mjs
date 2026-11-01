@@ -160,6 +160,21 @@ const genOut = path.join('src', 'zombie', 'lowbody', 'refBody.json');
 fs.mkdirSync(path.dirname(genOut), { recursive: true });
 fs.writeFileSync(genOut, JSON.stringify({ note: 'shares of stature, measured by tools/ref (F0); bone slices are [fraction along bone, front, back, out, in]; torso rows are [y, front, back, half width]', ...gen }));
 
+// per-model silhouette rows for the F5 fit (src/zombie/lowbody/refSil.json): [y, xMin, xMax, zMin, zMax] as shares of stature
+{
+  const sil = [];
+  for (const m of models) {
+    const g = group(m);
+    if (g !== 'male' && g !== 'female') continue;
+    const H = stature(m);
+    const hi = headInfo(m);
+    const rows = m.body.filter((r) => !hi.flagged || r.y < hi.hy).map((r) => [r.y, r.xMin, r.xMax, r.zMin, r.zMax].map((v) => r4(v / H)));
+    const torso = m.torso.filter((r) => !hi.flagged || r.y < hi.hy).map((r) => [r.y, r.front, r.back, (r.out + r.in) / 2].map((v) => r4(v / H)));
+    sil.push({ name: m.name, group: g, stature: r4(H), headwear: hi.flagged ? 1 : 0, rows, torso });
+  }
+  fs.writeFileSync(path.join('src', 'zombie', 'lowbody', 'refSil.json'), JSON.stringify(sil));
+}
+
 // silhouettes: front (x,y) and side (z,y) outline from the body slices, plus joints as dots
 const S = 160; // px per metre
 const cell = 2.1 * S;
