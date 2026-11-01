@@ -255,15 +255,15 @@ Berat dan otot juga menggeser garis lengan keluar (`ARM_PUSH`), kalau tidak leng
 
 **Belum:** panjang kaki sebagai slider terpisah (tinggi saat ini menskala seluruh badan), slider femininity di panel (sekarang selalu pria dan wanita berdampingan), dan fit silhouette untuk bentuk di luar rata-rata (ujung "berotot" referensi Big dude belum diukur).
 
-## 11. Hasil F6 (kepala procedural, versi pertama)
+## 11. Hasil F6 (kepala procedural, versi 2)
 
-Kepala dibuat dari nol di dalam jaring badan yang sama (`body.ts`, tanpa file luar, jadi lisensi mesh Sketchfab tidak terlibat):
-- 7 baris kepala di atas baris rahang, pada tinggi relatif terhadap tinggi kepala (`HEAD_ROWS`): dagu, mulut, dasar hidung, mata, alis, dahi, tengkorak; lalu kipas di ubun-ubun. Tiap baris berupa elips tengkorak (lebar dari data referensi, tonjolan hidung dan dagu bawaan data dibuang) ditambah relief wajah `faceDz` (dagu, bibir, ujung hidung selebar satu vertex, pangkal hidung, cekungan mata, alis).
-- Telinga: satu quad kepala dipotong di tiap sisi (agak ke belakang garis tengah) lalu tumbuh jadi daun telinga pipih dua cincin; tertutup (`checkClosed` tetap 0 sisi terbuka).
-- Mata, alis, bibir dan rambut adalah muka berwarna (`Paint.rule` membaca titik pusat muka), bukan geometri. Wanita mendapat rambut panjang di belakang kepala (hanya warna).
-- 1684 segitiga per badan (+128). Skor siluet nyaris tidak berubah (pria 0.907, wanita 0.863), baterai pose F3 sama, mesh tertutup.
+Versi 1 (12 kolom, relief 1 vertex lebar) dinilai terlalu kasar. Versi 2 memberi kepala cincin sendiri berisi **24 kolom x 14 baris** (`HEAD_N`, `HEAD_F`, `FACE_DZ` di `body.ts`), disambung ke cincin leher (12) dengan `bridge`. Tanpa mesh luar (lisensi Sketchfab tidak terlibat).
+- Lebar dan kedalaman tiap baris dari data referensi sebagai elips tengkorak, lalu relief wajah per baris dan kolom (15° per kolom): dagu, bibir bawah dan atas dengan garis mulut, hidung (ujung, sayap hidung, pangkal yang cekung di antara mata), mata cekung, tulang pipi, punggung alis, dahi. Rahang dipaksa tidak lebih sempit dari leher supaya leher tidak menembus wajah.
+- Mata, alis, bibir dan rambut diwarnai **per quad** (bukan per titik tengah): mata = putih-iris-putih tiga quad, alis dua baris, bibir bawah dan atas beda warna; rambut menutup garis rambut ke atas, sisi dan belakang di atas telinga; wanita juga rambut panjang di belakang (hanya warna).
+- Telinga: patch 2x3 quad di belakang kolom samping dipotong lalu tumbuh jadi daun telinga pipih dengan ujung.
+- 2208 segitiga per badan (+524 dari versi 1). Mesh tertutup, T-pose 0 tabrakan pada pria dan wanita, baterai pose sama seperti sebelumnya, silhouette 0.905 / 0.862, semua ekstrem slider tetap tertutup.
 
-**Batas versi ini.** 12 kolom per cincin membuat wajah kasar: hidung dan mata hanya berupa baji dan segitiga, rambut hanya warna sehingga siluetnya tetap bulat, dan wajah wanita sama dengan pria selain rambut. Untuk wajah yang lebih meyakinkan perlu cincin kepala 16–20 kolom yang disambung ke leher 12 kolom dengan `bridge`, rambut sebagai geometri (F7), dan variasi bentuk wajah di slider.
+**Belum sebanding dengan referensi yang bagus (prajurit berhelm):** bidang wajah masih terlalu tipis dan bergaris horizontal (14 baris untuk wajah; referensi memakai bidang besar dan sedikit), hidung dan mulut masih blok kasar, rahang belum bersudut, rambut hanya warna sehingga tidak ada siluet rambut, wajah wanita sama dengan pria. Langkah berikut: kurangi baris tapi pasang bidang miring besar (hidung berbentuk prisma, tulang pipi dan rahang bersudut), rambut dan helm sebagai geometri (F7), bentuk wajah yang berbeda antar jenis kelamin.
 
 ## 12. Catatan
 

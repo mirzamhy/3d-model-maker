@@ -15,10 +15,33 @@ import { fingerLayout, lowBoneDefs } from './rigLow';
 
 type W = Record<string, number>;
 interface Vtx { p: Vector3; w: W }
-interface Face { v: number[]; inside: Vector3 }
+interface Face { v: number[]; inside: Vector3; color?: Color }
 
 const TRUNK_SIDES = 12;
-const HEAD_ROWS = [0.17, 0.3, 0.42, 0.55, 0.67, 0.8, 0.91];
+const HEAD_N = 24; // columns around the head (the trunk rings have 12)
+// head rows as shares of the jaw-to-crown height: chin underside, chin, below lip, lower lip, mouth line, upper lip,
+// nose base, nose, eye bottom, eye top, brow, forehead, hairline, upper skull
+const HEAD_F = [0, 0.06, 0.12, 0.17, 0.21, 0.26, 0.33, 0.41, 0.48, 0.53, 0.59, 0.66, 0.76, 0.87];
+/** Forward push of each head row's vertices by column (0 = straight ahead, 15 degrees per column), shares of stature. */
+const FACE_DZ: Array<Record<number, number>> = [
+  { 0: 0.006, 1: 0.004, 2: 0.001 }, // 0 chin underside
+  { 0: 0.01, 1: 0.008, 2: 0.004, 3: 0.001 }, // 1 chin
+  { 0: 0.005, 1: 0.004, 2: 0.002 }, // 2 below the lip
+  { 0: 0.008, 1: 0.007, 2: 0.004 }, // 3 lower lip
+  { 0: 0.006, 1: 0.006, 2: 0.003 }, // 4 mouth line (a shallow dent between the lips)
+  { 0: 0.009, 1: 0.008, 2: 0.004 }, // 5 upper lip
+  { 0: 0.024, 1: 0.012, 2: 0.005, 3: 0.001 }, // 6 nose base: the tip, with the nostril wings
+  { 0: 0.018, 1: 0.006, 2: 0.001 }, // 7 nose
+  { 0: 0.011, 1: 0.002, 2: -0.003, 3: -0.004, 4: -0.003, 5: -0.001 }, // 8 eye bottom: sunken eyes, the nose bridge between
+  { 0: 0.005, 1: 0, 2: -0.003, 3: -0.004, 4: -0.003 }, // 9 eye top: the dip at the root of the nose
+  { 0: 0.007, 1: 0.007, 2: 0.007, 3: 0.007, 4: 0.006, 5: 0.004 }, // 10 brow ridge
+  { 0: 0.004, 1: 0.004, 2: 0.004, 3: 0.003, 4: 0.002 }, // 11 forehead
+];
+/** Sideways push (cheekbones) by row and column. */
+const FACE_DX: Array<Record<number, number>> = [];
+FACE_DX[7] = { 4: 0.003, 5: 0.004 };
+FACE_DX[8] = { 4: 0.003, 5: 0.004 };
+FACE_DX[9] = { 5: 0.002 };
 const LIMB_SIDES = 8;
 const SHAPE = 0.85; // < 1 makes rings a little boxy, like the faceted references
 
@@ -89,28 +112,30 @@ class Topo {
   faces: Face[] = [];
   /** Named vertex loops at the joints (for the pose tests: cross-section area before and after bending). */
   rings: Record<string, number[]> = {};
-  /** Head landmarks for the face paint (heights, centre and eye spacing). */
-  face = { jawY: 0, hh: 1, zc: 0, eyeX: 0, frontZ: 0 };
+  /** Face index of each triangle returned by triangles() (for per-face colours). */
+  triFace: number[] = [];
   add(p: Vector3, w: W) {
     this.verts.push({ p, w });
     return this.verts.length - 1;
   }
-  quad(a: number, b: number, c: number, d: number, inside: Vector3) {
-    this.faces.push({ v: [a, b, c, d], inside });
+  quad(a: number, b: number, c: number, d: number, inside: Vector3, color?: Color) {
+    this.faces.push({ v: [a, b, c, d], inside, color });
   }
-  tri(a: number, b: number, c: number, inside: Vector3) {
-    this.faces.push({ v: [a, b, c], inside });
+  tri(a: number, b: number, c: number, inside: Vector3, color?: Color) {
+    this.faces.push({ v: [a, b, c], inside, color });
   }
   /** Triangles with outward winding (normal away from the face's inside point). */
   triangles(): number[][] {
     const out: number[][] = [];
-    for (const f of this.faces) {
+    this.triFace = [];
+    for (const [fi, f] of this.faces.entries()) {
       const tris = f.v.length === 4 ? [[f.v[0], f.v[1], f.v[2]], [f.v[0], f.v[2], f.v[3]]] : [f.v];
       for (const t of tris) {
         const [a, b, c] = t.map((i) => this.verts[i].p);
         const n = new Vector3().subVectors(b, a).cross(new Vector3().subVectors(c, a));
         const cen = a.clone().add(b).add(c).multiplyScalar(1 / 3);
         out.push(n.dot(cen.sub(f.inside)) >= 0 ? t : [t[0], t[2], t[1]]);
+        this.triFace.push(fi);
       }
     }
     // The inside-point guess can fail on flat bits (knuckle band). Make the winding consistent through the
@@ -224,10 +249,8 @@ function buildBody(spec: BodySpec, skel: Skel) {
   rowsY.push(yA, armY, yB);
   const neckY = Math.max(J.Neck.y + 0.015 * H, yB + 0.015 * H);
   const jawY = Math.max(J.Head.y + 0.012 * H, neckY + 0.012 * H);
-  rowsY.push(neckY, jawY);
-  // head rows above the jaw, as shares of the jaw-to-crown height: chin, mouth, nose base, eyes, brow, forehead, skull
-  const hh = H - jawY;
-  for (const f of HEAD_ROWS) rowsY.push(jawY + f * hh);
+  rowsY.push(neckY);
+  const hh = H - jawY; // the head is built after the trunk rows (see below)
   rowsY.sort((a, b) => a - b);
 
   // torso weights: each bone owns the span from its joint to the next, blended over +-3 % of height at joints
@@ -244,17 +267,6 @@ function buildBody(spec: BodySpec, skel: Skel) {
   };
 
   const rows: number[][] = [];
-  // face relief: forward push of each head row's vertices by column (0 = straight ahead), shares of stature
-  const faceDz = (hr: number, i: number) => {
-    const c = Math.min(i, TRUNK_SIDES - i);
-    if (hr === 0) return c === 0 ? 0.004 : 0;
-    if (hr === 1) return c === 0 ? 0.007 : c === 1 ? 0.002 : 0; // chin
-    if (hr === 2) return c === 0 ? 0.004 : 0; // lips
-    if (hr === 3) return c === 0 ? 0.019 : c === 1 ? 0.003 : 0; // nose tip, one vertex wide
-    if (hr === 4) return c === 0 ? 0.008 : c === 1 ? -0.005 : 0; // nose bridge, eye sockets
-    if (hr === 5) return c <= 1 ? 0.004 : 0; // brow
-    return 0;
-  };
   // with the shoulder helper the hole rim and the first arm ring follow half the arm's turn
   const armH = TUNE.helpers && TUNE.armHelper > 0;
   // neck ring: round, sized from the Neck bone's own sections (the trunk cut there mixes chin and collar)
@@ -294,27 +306,12 @@ function buildBody(spec: BodySpec, skel: Skel) {
       s.back = neckR - zc;
       s.half = neckR;
     }
-    // underside of the head: the jaw, not a flat disc. The back follows the neck into the skull (no ledge),
-    // the sides narrow to the jaw, and the row tilts (chin low, nape high).
-    const isJaw = r === neckRow + 1;
-    if (isJaw) {
-      const zc = J.Neck.z;
-      s.back = Math.min(s.back, neckR - zc + 0.008 * H);
-      s.half = Math.min(s.half * 0.85, neckR + 0.02 * H);
-    }
     const isHole = r >= iA && r <= iA + 2;
     const ids: number[] = [];
     for (let i = 0; i < TRUNK_SIDES; i++) {
       const a = (i / TRUNK_SIDES) * Math.PI * 2;
       let x = spow(Math.sin(a), SHAPE) * s.half;
       let z = spow(Math.cos(a), SHAPE) * (Math.cos(a) >= 0 ? s.front : s.back);
-      // head rows: a plain skull ellipse (the measured front carries the nose and chin, which are added back below)
-      const hr = r - (neckRow + 1); // 0 = jaw row, 1.. = face rows
-      if (hr >= 1) {
-        const fr = Math.min(s.front, s.back * 1.12);
-        z = (fr - s.back) / 2 + spow(Math.cos(a), SHAPE) * ((fr + s.back) / 2);
-        z += faceDz(hr, i) * H;
-      } else if (hr === 0) z += faceDz(0, i) * H;
       // shoulder-top row: the middle (throat and nape) leans halfway towards the neck ring, so the chest
       // slopes into the neck instead of ending in a flat collar
       const holeCol = (i >= 2 && i <= 4) || (i >= 8 && i <= 10);
@@ -333,7 +330,6 @@ function buildBody(spec: BodySpec, skel: Skel) {
       let vy = y;
       // (never below the row underneath, or the band between them would turn inside out)
       if (r === iA + 2) vy = Math.max(rowsY[r - 1] + 0.006 * H, vy - Math.cos(a) ** 2 * (Math.cos(a) > 0 ? 0.012 : 0.006) * H);
-      if (isJaw) vy = Math.max(rowsY[r - 1] + 0.006 * H, vy - Math.cos(a) * 0.014 * H);
       let w = trunkW(vy);
       // shoulder rows follow the clavicle a little, more at the top and outside
       const sideName = x > 0 ? 'Left' : 'Right';
@@ -362,8 +358,7 @@ function buildBody(spec: BodySpec, skel: Skel) {
   });
 
   // trunk quads, leaving out the two 2x2 arm patches
-  const earR = neckRow + 1 + 3; // ears sit between nose base and eye rows, a little behind the side column
-  const holeQuad = (r: number, i: number) => ((r === iA || r === iA + 1) && ((i >= 2 && i < 4) || (i >= 8 && i < 10))) || (r === earR && (i === 3 || i === 8));
+  const holeQuad = (r: number, i: number) => (r === iA || r === iA + 1) && ((i >= 2 && i < 4) || (i >= 8 && i < 10));
   for (let r = 0; r < rows.length - 1; r++) {
     const inside = new Vector3(0, (rowsY[r] + rowsY[r + 1]) / 2, 0);
     for (let i = 0; i < TRUNK_SIDES; i++) {
@@ -372,34 +367,6 @@ function buildBody(spec: BodySpec, skel: Skel) {
       T.quad(rows[r][i], rows[r][j], rows[r + 1][j], rows[r + 1][i], inside);
     }
   }
-  // ears: grow a small flat flap from each cut-out head quad
-  for (const sd of [1, -1] as const) {
-    const q = (sd > 0 ? [3, 4] : [9, 8]).flatMap((i) => [rows[earR][i], rows[earR + 1][i]]); // two columns, two rows
-    const ring = [q[0], q[2], q[3], q[1]]; // around the quad
-    const c = ring.reduce((acc, id) => acc.add(T.verts[id].p), new Vector3()).multiplyScalar(0.25);
-    const out = new Vector3(sd, 0.05, -0.25).normalize();
-    const ids1: number[] = [], ids2: number[] = [];
-    for (const id of ring) {
-      const p = T.verts[id].p;
-      ids1.push(T.add(c.clone().add(p.clone().sub(c).multiplyScalar(0.9)).addScaledVector(out, 0.008 * H), { Head: 1 }));
-      ids2.push(T.add(c.clone().add(p.clone().sub(c).multiplyScalar(0.7)).addScaledVector(out, 0.015 * H).add(new Vector3(0, 0.004 * H, -0.004 * H)), { Head: 1 }));
-    }
-    const inside = new Vector3(0, c.y, c.z);
-    for (let k = 0; k < 4; k++) {
-      const k1 = (k + 1) % 4;
-      T.quad(ring[k], ring[k1], ids1[k1], ids1[k], inside);
-      T.quad(ids1[k], ids1[k1], ids2[k1], ids2[k], inside);
-    }
-    T.quad(ids2[0], ids2[1], ids2[2], ids2[3], inside);
-  }
-  T.face = { jawY, hh, zc: (T.verts[rows[neckRow + 4][6]].p.z + T.verts[rows[neckRow + 4][0]].p.z) / 2, eyeX: Math.abs(T.verts[rows[neckRow + 5][1]].p.x), frontZ: T.verts[rows[neckRow + 5][0]].p.z };
-  // crown
-  const top = rows[rows.length - 1];
-  const crownZ = (T.verts[top[0]].p.z + T.verts[top[6]].p.z) / 2;
-  const crown = T.add(new Vector3(0, H, crownZ), { Head: 1 });
-  const crownIn = new Vector3(0, rowsY[rowsY.length - 1] - 0.02 * H, crownZ);
-  for (let i = 0; i < TRUNK_SIDES; i++) T.tri(top[i], top[(i + 1) % TRUNK_SIDES], crown, crownIn);
-
   // joint rings around a hinge: parent side, on the joint, child side. With helper bones the joint ring is
   // carried by the half-angle helper and its neighbours blend towards it; without, the classic 80/20, 50/50.
   const joint = (parent: string, helper: string, child: string, at: -1 | 0 | 1): W => {
@@ -495,6 +462,103 @@ function buildBody(spec: BodySpec, skel: Skel) {
       }
     }
   };
+
+  // ---------- head ----------
+  // Own rings of HEAD_N columns, joined to the neck ring (12) with a zipped band. Every row gets its width and depth
+  // from the measured head (as a plain skull ellipse: the measured front carries the nose and chin, which are
+  // added back as FACE_DZ relief); the face is coloured per quad (eyes, brows, lips, hair).
+  {
+    const N = HEAD_N;
+    const neckRing = rows[rows.length - 1];
+    const hrows: number[][] = [];
+    const d = 0.012 * H;
+    let prevBack = 0, prevHalf = 0;
+    HEAD_F.forEach((f, k) => {
+      const y = jawY + f * hh;
+      const q = [trunkAt(spec.trunk, y - d), trunkAt(spec.trunk, y), trunkAt(spec.trunk, y + d)];
+      const avg = (key: 'front' | 'back' | 'half') => (q[0][key] + 2 * q[1][key] + q[2][key]) / 4;
+      const fh = y / H;
+      let half = avg('half') * knotMul(TUNE.halfMul, fh);
+      let front = avg('front') * knotMul(TUNE.frontMul, fh);
+      let back = avg('back') * knotMul(TUNE.backMul, fh);
+      if (k === 0) {
+        // underside of the jaw: it follows the neck, no ledge
+        half = Math.min(half, neckR + 0.015 * H);
+        back = Math.min(back, neckR - J.Neck.z + 0.006 * H);
+      }
+      // the lower face widens and deepens going up (the trunk cut there is mixed with the neck and can dip)
+      if (k >= 1 && k <= 7) { back = Math.max(back, prevBack); half = Math.max(half, prevHalf * 0.98); }
+      // the jaw is never narrower than the neck it sits on, or the neck would poke out of the face
+      if (k >= 1 && k <= 4) { back = Math.max(back, neckR - J.Neck.z + 0.006 * H); half = Math.max(half, neckR + 0.004 * H); }
+      prevBack = back; prevHalf = half;
+      const fr = Math.min(front, back * 1.12);
+      const zc = (fr - back) / 2, rz = (fr + back) / 2;
+      const ids: number[] = [];
+      for (let j = 0; j < N; j++) {
+        const a = (j / N) * Math.PI * 2;
+        const c = Math.min(j, N - j);
+        const sgn = Math.sin(a) >= 0 ? 1 : -1;
+        const x = spow(Math.sin(a), SHAPE) * half + sgn * (FACE_DX[k]?.[c] ?? 0) * H;
+        const z = zc + spow(Math.cos(a), SHAPE) * rz + (FACE_DZ[k]?.[c] ?? 0) * H;
+        let vy = y;
+        if (k === 0) vy = Math.max(rowsY[rowsY.length - 1] + 0.006 * H, y - Math.cos(a) * 0.012 * H); // chin low, nape high
+        ids.push(T.add(new Vector3(x, vy, z), k === 0 ? { Head: 0.8, Neck: 0.2 } : { Head: 1 }));
+      }
+      hrows.push(ids);
+    });
+    bridge(neckRing, hrows[0]);
+    // colours per quad: s = columns away from the centre line (0..11), k = row band
+    const sym = (j: number) => Math.min(j, N - 1 - j);
+    const quadColor = (k: number, j: number): Color | undefined => {
+      const s = sym(j);
+      const back = s >= 8; // behind about 120 degrees
+      if (k === 8 && s >= 1 && s <= 3) return s === 2 ? IRIS : EYE_W; // white, iris, white
+      if (k === 10 && s >= 1 && s <= 4) return BROW;
+      if (k === 3 && s <= 1) return LIP;
+      if (k === 4 && s <= 1) return LIP_D;
+      if (k >= 12 || (k >= 9 && s >= 7)) return HAIR; // hairline up, and the sides and back above the ears
+      if (spec.femininity > 0.5 && k >= 1 && back) return HAIR; // long hair down the back
+      return undefined;
+    };
+    const earQuad = (k: number, j: number) => k >= 6 && k <= 8 && (j === 6 || j === 7 || j === N - 1 - 6 || j === N - 1 - 7);
+    for (let k = 0; k < hrows.length - 1; k++) {
+      const inside = new Vector3(0, jawY + ((HEAD_F[k] + HEAD_F[k + 1]) / 2) * hh, T.verts[hrows[k][0]].p.z - 0.04 * H);
+      for (let j = 0; j < N; j++) {
+        if (earQuad(k, j)) continue;
+        const j1 = (j + 1) % N;
+        T.quad(hrows[k][j], hrows[k][j1], hrows[k + 1][j1], hrows[k + 1][j], inside, quadColor(k, j));
+      }
+    }
+    // ears: the 2 x 3 quad patch behind each side column grows into a flat flap
+    for (const sd of [1, -1] as const) {
+      const col = (j: number) => (sd > 0 ? j : (N - j) % N);
+      const h = (k: number, j: number) => hrows[k][col(j)];
+      const loop = [h(6, 6), h(6, 7), h(6, 8), h(7, 8), h(8, 8), h(9, 8), h(9, 7), h(9, 6), h(8, 6), h(7, 6)];
+      const c = loop.reduce((acc, id) => acc.add(T.verts[id].p), new Vector3()).multiplyScalar(1 / loop.length);
+      const out = new Vector3(sd, 0.05, -0.2).normalize();
+      const r1: number[] = [], r2: number[] = [];
+      for (const id of loop) {
+        const p = T.verts[id].p;
+        r1.push(T.add(c.clone().add(p.clone().sub(c).multiplyScalar(0.9)).addScaledVector(out, 0.007 * H), { Head: 1 }));
+        r2.push(T.add(c.clone().add(p.clone().sub(c).multiplyScalar(0.62)).addScaledVector(out, 0.015 * H).add(new Vector3(0, 0.003 * H, -0.004 * H)), { Head: 1 }));
+      }
+      const tipP = T.add(c.clone().addScaledVector(out, 0.017 * H).add(new Vector3(0, 0.003 * H, -0.004 * H)), { Head: 1 });
+      const inside = new Vector3(0, c.y, c.z);
+      const L = loop.length;
+      for (let i = 0; i < L; i++) {
+        const i1 = (i + 1) % L;
+        T.quad(loop[i], loop[i1], r1[i1], r1[i], inside);
+        T.quad(r1[i], r1[i1], r2[i1], r2[i], inside);
+        T.tri(r2[i], r2[i1], tipP, inside);
+      }
+    }
+    // crown
+    const top = hrows[hrows.length - 1];
+    const crownZ = (T.verts[top[0]].p.z + T.verts[top[N / 2]].p.z) / 2;
+    const crown = T.add(new Vector3(0, H, crownZ), { Head: 1 });
+    const crownIn = new Vector3(0, H - 0.03 * H, crownZ);
+    for (let j = 0; j < N; j++) T.tri(top[j], top[(j + 1) % N], crown, crownIn, HAIR);
+  }
 
   const bottom = rows[0];
   // one point under the crotch, shared by both leg loops (the seam between the legs)
@@ -622,7 +686,7 @@ function buildBody(spec: BodySpec, skel: Skel) {
 }
 
 const SKIN = new Color('#c99a7c');
-const EYE = new Color('#3a2e2a'), BROW = new Color('#4a3a30'), LIP = new Color('#b0706a'), HAIR = new Color('#4a3a2e');
+const EYE_W = new Color('#e6e0d4'), IRIS = new Color('#1e1a18'), BROW = new Color('#4a3322'), LIP = new Color('#b0706a'), LIP_D = new Color('#9a5a56'), HAIR = new Color('#4a3a2e');
 
 export interface LowTopo { pos: Vector3[]; tris: number[][]; weights: Weights[]; rings: Record<string, number[]> }
 
@@ -644,24 +708,12 @@ export function buildLowBody(seed: number, femininity: number, tune?: FitTune, s
     const sum = top.reduce((t, x) => t + x[1], 0);
     return top.map(([i, v]) => [i, v / sum] as [number, number]);
   };
-  const F = T.face;
-  const yAt = (f: number) => F.jawY + f * F.hh;
-  // hair, brows, eyes and lips are coloured faces (no extra geometry); the rule reads each face's centroid
-  const paint = {
-    base: SKIN,
-    rule: (p: Vector3) => {
-      const ax = Math.abs(p.x) / (F.eyeX || 1);
-      const front = p.z > F.zc + 0.02 * spec.height;
-      if (front && p.y > yAt(0.55) && p.y < yAt(0.61) && ax > 0.7 && ax < 1.4) return EYE; // lower facet of the eye band
-      if (front && p.y > yAt(0.67) && p.y < yAt(0.71) && ax > 0.7 && ax < 1.6) return BROW; // lower facet of the brow band
-      if (front && p.y > yAt(0.2) && p.y < yAt(0.26) && ax < 0.7) return LIP;
-      if (p.y > yAt(0.8) || (p.y > yAt(0.62) && p.z < F.zc + 0.01 * spec.height)) return HAIR;
-      if (femininity > 0.5 && p.y > yAt(0.05) && p.z < F.zc - 0.012 * spec.height) return HAIR; // long hair down the back
-      return null;
-    },
-  };
+  const SKIN_PAINT = { base: SKIN };
   const vw = T.verts.map((v) => wts(v.w));
-  for (const [a, b, c] of tris) mb.tri(T.verts[a].p, T.verts[b].p, T.verts[c].p, vw[a], vw[b], vw[c], paint);
+  tris.forEach(([a, b, c], ti) => {
+    const col = T.faces[T.triFace[ti]].color;
+    mb.tri(T.verts[a].p, T.verts[b].p, T.verts[c].p, vw[a], vw[b], vw[c], col ? { base: col } : SKIN_PAINT);
+  });
   const { geometry } = mb.geometry();
   // shared-vertex topology for the pose tests (the render mesh is flat-shaded, so its vertices are split)
   const topo: LowTopo = { pos: T.verts.map((v) => v.p.clone()), tris, weights: vw, rings: T.rings };
