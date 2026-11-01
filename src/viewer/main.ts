@@ -21,7 +21,9 @@ import {
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { buildZombie, setXray, type Rig, type Style } from '../zombie/build';
-import { applyPose, POSES, type PoseName } from '../zombie/pose';
+import { applyPose, POSE_TESTS, POSES, resetPose, type PoseName } from '../zombie/pose';
+import { runPoseTests, skinPositions, summarise } from '../zombie/lowbody/poseTest';
+import { driveHelpers } from '../zombie/lowbody/helpers';
 import { fittedBounds, getImportName, getImportOpts, hasImport, lastReport, loadGlb, setImportOpts } from '../zombie/import/importMesh';
 import { RigOverlay } from './overlay';
 
@@ -129,6 +131,7 @@ interface Actor {
 }
 let actors: Actor[] = [];
 let overlays: RigOverlay[] = [];
+let heldTest: (typeof POSE_TESTS)[number] | null = null;
 
 const HORDE: Array<{ x: number; z: number; ry: number; pose: PoseName; seed: number }> = [
   { x: -1.25, z: -0.9, ry: 0.35, pose: 'walk', seed: 3 },
@@ -237,7 +240,11 @@ let t = 0;
 function frame(dt: number) {
   t += dt;
   for (const a of actors) {
-    applyPose(a.rig, a.pose ?? state.pose, t + a.t0);
+    if (heldTest) {
+      resetPose(a.rig);
+      heldTest.set(a.rig);
+    } else applyPose(a.rig, a.pose ?? state.pose, t + a.t0);
+    driveHelpers(a.rig);
     // the reference outline is drawn in T-pose, so it only makes sense there
     const outline = a.rig.root.getObjectByName('refSilhouette');
     if (outline) outline.visible = (a.pose ?? state.pose) === 'tpose';
@@ -478,6 +485,26 @@ async function exportGlb(name: string) {
   },
   stats: () => actors[0].rig.stats,
   actors: () => actors,
+  /** F3 deformation tests on the low-poly bodies (style lowbody): one result list per figure. */
+  poseTest(only?: string[], detail = false) {
+    const out = actors.map((a) => {
+      const results = runPoseTests(a.rig, only, detail);
+      return { body: (a.rig.femininity ?? 0) > 0.5 ? 'female' : 'male', results, text: summarise(results) };
+    });
+    (globalThis as unknown as { __lowbodyPoseTest: unknown }).__lowbodyPoseTest = out;
+    frame(0);
+    return out;
+  },
+  /** Skinned vertex positions of figure i in its current pose (low-poly body only), for ad-hoc checks. */
+  skin(i = 0) {
+    const rig = actors[i].rig;
+    return skinPositions(rig, rig.mesh.geometry.userData.lowTopo);
+  },
+  /** Hold one pose from the F3 battery (empty string goes back to the animated pose). */
+  holdTest(name: string) {
+    heldTest = POSE_TESTS.find((p) => p.name === name) ?? null;
+    frame(0);
+  },
 };
 
 window.addEventListener('resize', resize);

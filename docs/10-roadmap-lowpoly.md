@@ -184,7 +184,41 @@ Sisa pekerjaan untuk F3 dan seterusnya:
 - dagu menggantung di atas leher (kepala polos ini akan diganti di F6);
 - celah segitiga kecil di selangkangan.
 
-## 8. Catatan
+## 8. Hasil F3 (bobot, helper bone, uji gerak otomatis)
+
+**Uji otomatis.** `src/zombie/lowbody/poseTest.ts` dengan 20 pose tahan (`POSE_TESTS` di `pose.ts`): T, A, tangan turun/atas/depan/belakang, siku 140°, twist lengan bawah, twist pergelangan, kepal, lutut 150°, jongkok, tendang, ngangkang, bungkuk, putar badan, 4 fase jalan. Mesh di-skin di CPU (rumus sama dengan GPU), lalu diukur:
+- `folds`: segitiga menembus segitiga tulang yang sama atau tetangga (≤ 2 langkah di rangka) = kulit melipat ke dalam;
+- `contacts`: menembus bagian tubuh jauh (tangan masuk paha) = masalah pose, bukan kulit;
+- `flipped`: normal terbalik terhadap normal rest yang diputar tulang utamanya, atau luas < 15 %;
+- `creases`: sudut antar-segitiga melonjak > 100° dari < 50° saat rest;
+- `vol`: volume mesh tertutup terhadap rest;
+- `rings`: luas penampang ring sendi (bahu, siku, pergelangan, pinggul, lutut, pergelangan kaki) terhadap rest.
+
+Jalankan: `__zm.set({style:'lowbody'}); __zm.poseTest()` (teks per pose di `.text`; `poseTest(['walk1'], true)` memberi daftar pasangan segitiga dan tepi lipatan). `__zm.holdTest('squat')` menahan satu pose di viewer, `__zm.skin()` memberi posisi verteks setelah skinning. Satu putaran penuh ±0.6 s untuk dua badan.
+
+**Perbaikan dari hasil uji:**
+- T-pose sudah punya tabrakan di pangkal kelingking dan jempol. Penyebab: ring 4 sisi berbentuk belah ketupat sedang lubang akarnya persegi (tabung terpuntir 45°); ring tangan terakhir sejajar pangkal kelingking; ring pertama jempol terbenam di permukaan tangan. Ring 4 sisi diputar 45°, ring tangan terakhir mundur ke f 0.74, ring pertama jempol didorong keluar dari permukaan, kelingking tidak terlalu melebar. Hasil: T-pose 0 tabrakan pada pria dan wanita.
+- **Bahu:** tepi lubang lengan, kolom dada/punggung di sampingnya, dan sisi dada bawah ketiak sekarang ikut lengan bertahap (`TUNE_DEFAULT` di `body.ts`, dicari dengan grid lewat `globalThis.__lbTune`). Tabrakan lengan atas ke badan pada pose lengan turun dari 271 menjadi ±0.
+- **Helper bone** (`helpers.ts`, bukan tulang Mixamo): `ArmHelper`, `ElbowHelper`, `KneeHelper`, `HipHelper` berada di sendi dan berputar setengah sudut tulang anaknya; `ForeArmTwist` mengambil setengah putaran tangan. Skinning linear membuat ring 50/50 menyusut ke cos(θ/2); ring yang dibawa helper tetap kaku. Ada satu ring baru di sendi bahu (1556 segitiga, sebelumnya 1524).
+
+| Pose | Sebelum | Sesudah |
+|---|---|---|
+| siku 140° penampang | 0.34 | 1.00 |
+| lutut 150° penampang | 0.26 | 1.00 |
+| pinggul jongkok | 0.70 | 1.00 |
+| twist pergelangan 90° | 0.54 | 0.86–0.88 |
+| tabrakan bahu (11 pose lengan) | 271 | ±1 |
+| lipatan tajam bahu | 44 | 7 |
+
+Wajib: panggil `driveHelpers(rig)` setiap frame setelah pose (viewer dan uji sudah melakukannya). Klip Mixamo/GLB di engine lain tidak menggerakkan helper; sendi lalu kembali kaku seperti bobot biasa dan siku/lutut terlihat seperti terlipat setengah. Untuk ekspor ke luar, `__lbTune = {helpers:false}` memberi bobot klasik.
+
+**Sisa:**
+- Kantong ketiak/V di depan bahu masih terlihat saat lengan diayun ke belakang. Bobot sudah mentok; perlu topologi lubang lengan yang lebih besar (3×2 quad) atau loop deltoid miring.
+- Kontak tangan ke pinggul/paha pada lengan turun dan jalan: proporsi pose, perbaiki di animasi (lengan sedikit abduksi).
+- Lipatan dalam pada siku 140°/lutut 150°/jongkok adalah kontak daging yang wajar; segitiga gepeng di lipatan dalam masih 16–40 per pose.
+- Kepal: jari menembus telapak (70 tabrakan); perlu kurva tekuk jari yang lebih kecil atau jari yang lebih tipis.
+
+## 9. Catatan
 
 - Lisensi pack referensi belum dicek. Selama masih dipakai sebagai angka acuan (F0), aman. Mesh-nya jangan dimasukkan ke repo.
 - Model "Argon (Gemini)" dan "Low-poly" lama tetap ada untuk perbandingan.

@@ -1,4 +1,4 @@
-# Handoff: low-poly base bodies (F0–F2 done, next F3)
+# Handoff: low-poly base bodies (F0–F3 done, next F4)
 
 Written 2026-11-01. Read this first in a new session. It stands on its own and explains both what was decided and why. More detail is in `docs/10-roadmap-lowpoly.md`.
 
@@ -21,7 +21,7 @@ User preferences:
 
 ## 2. Where things stand
 
-The project is `C:\Mirza Personal\model 3d maker`, a git repo on branch `main` with remote `mirzamhy/3d-model-maker`. **Everything in this handoff is uncommitted.** The earlier head and Zombie 2 work from previous sessions is uncommitted too.
+The project is `C:\Mirza Personal\model 3d maker`, a git repo on branch `main` with remote `mirzamhy/3d-model-maker`. F0–F2 are committed (0ffbc42..d97614c); F3 may still be uncommitted. The earlier head and Zombie 2 work from previous sessions is uncommitted too.
 
 The viewer is Vite at http://localhost:5195 (launch config `zombie-maker`, or run `npm run dev`). Its **Gaya model** panel has:
 - **Rangka low-poly (F1)**: wooden mannequin on the low rig, male and female side by side, with the reference outline.
@@ -34,10 +34,10 @@ Test poses: `Jalan normal` (hwalk), `Jongkok` (squat), `Angkat tangan` (armsup),
 | F0 measure references | done |
 | F1 rig + proportions | done |
 | F2 closed body | first version done, with 5 fingers |
-| F3 weights + automated motion tests | **next** |
+| F3 weights + automated motion tests | done (see roadmap §8, open: armpit pocket) |
 | F4 female/body sliders, F5 silhouette "training", F6 head, F7 accessories/zombie, F8 GLB + Mixamo test | not started |
 
-Current numbers: 1524 tris per body, 63 bones. `checkClosed` reports 0 open, 0 doubled and 0 flipped edges for both male and female.
+Current numbers: 1556 tris per body, 63 bones + 10 helper bones (driven by `driveHelpers`). F3 added `poseTest.ts`, `helpers.ts` and `__zm.poseTest/holdTest/skin`. `checkClosed` reports 0 open, 0 doubled and 0 flipped edges for both male and female.
 
 ## 3. Files
 

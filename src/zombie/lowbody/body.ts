@@ -21,11 +21,39 @@ const TRUNK_SIDES = 12;
 const LIMB_SIDES = 8;
 const SHAPE = 0.85; // < 1 makes rings a little boxy, like the faceted references
 
+/** Weights a scaled to (1 - k) plus b (b's values already sum to k). */
+const mix = (a: W, b: W, k: number): W => {
+  const out: W = {};
+  const sa = Object.values(a).reduce((t, v) => t + v, 0) || 1;
+  for (const [n, v] of Object.entries(a)) out[n] = (v / sa) * (1 - k);
+  for (const [n, v] of Object.entries(b)) out[n] = (out[n] ?? 0) + v;
+  return out;
+};
+
+/** Shoulder weight settings (found with the F3 pose battery; overridable from the page as __lbTune). */
+const TUNE_DEFAULT = {
+  rimArm: [0.9, 0.8, 0.5], // arm hole rim, by row (armpit, middle, deltoid): share of the arm (helper)
+  rimShoulder: [0.05, 0.1, 0.4],
+  latArm: 0.6, // chest side under the armpit
+  nextArm: 0.3, // chest and back columns beside the hole
+  armRoot: [0.85, 0.15], // first arm ring without helpers: Arm, Shoulder
+  helpers: true,
+  armHelper: 0.3, // first arm ring past the joint ring: share of the shoulder helper
+  jointRing: 0.05, // extra ring on the shoulder joint (0 = none)
+  rootF: 0.3,
+  near: 0.55, // elbow and knee: share of the helper on the rings beside the joint
+  hip: 1, // first thigh ring: share of the hip helper
+  twist: [0.3, 1, 0.4], // forearm twist bone share: mid forearm, wrist side, wrist ring
+};
+let TUNE = TUNE_DEFAULT;
+
 const spow = (x: number, e: number) => Math.sign(x) * Math.pow(Math.abs(x), e);
 
 class Topo {
   verts: Vtx[] = [];
   faces: Face[] = [];
+  /** Named vertex loops at the joints (for the pose tests: cross-section area before and after bending). */
+  rings: Record<string, number[]> = {};
   add(p: Vector3, w: W) {
     this.verts.push({ p, w });
     return this.verts.length - 1;
@@ -106,8 +134,10 @@ function frame(axis: Vector3) {
 function ringPoints(c: Vector3, axis: Vector3, s: Section, n: number): Vector3[] {
   const { u, w } = frame(axis);
   const pts: Vector3[] = [];
+  // a 4-sided ring has its corners between the axes (a box like the quad it grows from), not on them
+  const off = n === 4 ? Math.PI / 4 : 0;
   for (let k = 0; k < n; k++) {
-    const a = (k / n) * Math.PI * 2;
+    const a = (k / n) * Math.PI * 2 + off;
     const cu = Math.cos(a), sw = Math.sin(a);
     const ru = cu >= 0 ? s.front : s.back;
     const rw = sw >= 0 ? s.out : s.in;
@@ -133,7 +163,7 @@ function align(prev: Vector3[], pts: Vector3[]): Vector3[] {
 
 const centre = (pts: Vector3[]) => pts.reduce((a, p) => a.add(p), new Vector3()).multiplyScalar(1 / pts.length);
 
-interface Station { bone: string; f: number; ref: string; w: W; scale?: number; /** fixed section instead of the measured one */ sec?: Section }
+interface Station { bone: string; f: number; ref: string; w: W; scale?: number; /** fixed section instead of the measured one */ sec?: Section; /** shift of the ring centre (left side) */ offset?: Vector3 }
 
 function buildBody(spec: BodySpec, skel: Skel) {
   const T = new Topo();
@@ -174,6 +204,8 @@ function buildBody(spec: BodySpec, skel: Skel) {
   };
 
   const rows: number[][] = [];
+  // with the shoulder helper the hole rim and the first arm ring follow half the arm's turn
+  const armH = TUNE.helpers && TUNE.armHelper > 0;
   // neck ring: round, sized from the Neck bone's own sections (the trunk cut there mixes chin and collar)
   const neckSecs = spec.sections.Neck;
   const neckR = neckSecs.reduce((t, q) => t + (q.front + q.back + q.out + q.in) / 4, 0) / neckSecs.length;
@@ -238,17 +270,28 @@ function buildBody(spec: BodySpec, skel: Skel) {
       // (never below the row underneath, or the band between them would turn inside out)
       if (r === iA + 2) vy = Math.max(rowsY[r - 1] + 0.006 * H, vy - Math.cos(a) ** 2 * (Math.cos(a) > 0 ? 0.012 : 0.006) * H);
       if (isJaw) vy = Math.max(rowsY[r - 1] + 0.006 * H, vy - Math.cos(a) * 0.014 * H);
-      const w = trunkW(vy);
+      let w = trunkW(vy);
       // shoulder rows follow the clavicle a little, more at the top and outside
+      const sideName = x > 0 ? 'Left' : 'Right';
       if (r >= iA && Math.abs(Math.sin(a)) > 0.4) {
-        const sideName = x > 0 ? 'Left' : 'Right';
         const k = [0.2, 0.35, 0.55][r - iA] ?? 0.45;
         const out = Math.min(1, Math.abs(x) / armX);
-        if (r <= iA + 2 || r === iA + 3) w[`${sideName}Shoulder`] = k * out;
-        if (isHole && side && i !== 3 && i !== 9 && r === iA + 1) w[`${sideName}Arm`] = 0.15;
+        if (r <= iA + 3) w[`${sideName}Shoulder`] = k * out;
       }
+      // the rim of the arm hole moves with the arm, or the armpit and the back of the shoulder fold in when
+      // the arm hangs down: armpit row, middle row and deltoid row each take a share of Arm (and Shoulder)
+      if (isHole && side) {
+        const arm = TUNE.rimArm[r - iA], sh = TUNE.rimShoulder[r - iA];
+        w = mix(w, { [`${sideName}${armH ? 'ArmHelper' : 'Arm'}`]: arm, [`${sideName}Shoulder`]: sh }, arm + sh);
+      }
+      // the chest and back columns next to the hole take a smaller share, so the rim does not leave a V-shaped
+      // pocket in front of (and behind) the shoulder when the arm hangs down
+      const nb = i === 1 || i === 5 ? 1 : i === 7 || i === 11 ? -1 : 0;
+      if (armH && nb && r >= iA && r <= iA + 2) w = mix(w, { [`${nb > 0 ? 'Left' : 'Right'}ArmHelper`]: TUNE.nextArm }, TUNE.nextArm);
+      // side of the chest just under the armpit (latissimus) follows the arm a little
+      if (r === iA - 1 && side) w = mix(w, { [`${sideName}${armH ? 'ArmHelper' : 'Arm'}`]: TUNE.latArm }, TUNE.latArm);
       // hips/buttocks rows lean on the thighs at the sides
-      if (r <= 1 && Math.abs(Math.sin(a)) > 0.3) w[`${x > 0 ? 'Left' : 'Right'}UpLeg`] = r === 0 ? 0.45 : 0.2;
+      if (r <= 1 && Math.abs(Math.sin(a)) > 0.3) w[`${x > 0 ? 'Left' : 'Right'}${TUNE.helpers ? 'HipHelper' : 'UpLeg'}`] = r === 0 ? 0.45 : 0.2;
       ids.push(T.add(new Vector3(x, vy, z), w));
     }
     rows.push(ids);
@@ -270,6 +313,15 @@ function buildBody(spec: BodySpec, skel: Skel) {
   const crown = T.add(new Vector3(0, H, crownZ), { Head: 1 });
   const crownIn = new Vector3(0, rowsY[rowsY.length - 1] - 0.02 * H, crownZ);
   for (let i = 0; i < TRUNK_SIDES; i++) T.tri(top[i], top[(i + 1) % TRUNK_SIDES], crown, crownIn);
+
+  // joint rings around a hinge: parent side, on the joint, child side. With helper bones the joint ring is
+  // carried by the half-angle helper and its neighbours blend towards it; without, the classic 80/20, 50/50.
+  const joint = (parent: string, helper: string, child: string, at: -1 | 0 | 1): W => {
+    if (!TUNE.helpers) return at < 0 ? { [parent]: 0.8, [child]: 0.2 } : at > 0 ? { [parent]: 0.2, [child]: 0.8 } : { [parent]: 0.5, [child]: 0.5 };
+    const k = TUNE.near;
+    return at < 0 ? { [parent]: 1 - k, [helper]: k } : at > 0 ? { [helper]: k, [child]: 1 - k } : { [helper]: 1 };
+  };
+  const twistW = (i: 0 | 1): W => (TUNE.helpers ? { ForeArm: 1 - TUNE.twist[i], ForeArmTwist: TUNE.twist[i] } : { ForeArm: 1 });
 
   // ---------- limbs ----------
   // Grow a tube from a boundary loop of 8 existing vertices through the stations, then close it at `tip`.
@@ -306,6 +358,7 @@ function buildBody(spec: BodySpec, skel: Skel) {
       const [a, b] = segOf(`Left${st.bone}`);
       const axis = b.clone().sub(a);
       const c = a.clone().addScaledVector(axis, st.f);
+      if (st.offset) c.add(st.offset);
       const scaled = secs[r];
       const pts = align(prev, ringPoints(c, axis.normalize(), scaled, sides).map(mir));
       const w: W = {};
@@ -364,13 +417,13 @@ function buildBody(spec: BodySpec, skel: Skel) {
     const legRoot = [bottom[col(0)], bottom[col(1)], bottom[col(2)], bottom[col(3)], bottom[col(4)], bottom[col(5)], bottom[col(6)], crotchPt];
     const thighLen = segOf('LeftUpLeg')[0].distanceTo(segOf('LeftUpLeg')[1]);
     const f0 = Math.min(0.3, Math.max(0.08, (J.LeftUpLeg.y - (crotch - 0.03 * H)) / thighLen));
-    limb(s, legRoot, [
-      { bone: 'UpLeg', f: f0, ref: 'UpLeg', w: { UpLeg: 0.75, Hips: 0.25 }, scale: 1.05 },
+    const legRings = limb(s, legRoot, [
+      { bone: 'UpLeg', f: f0, ref: 'UpLeg', w: TUNE.helpers ? { HipHelper: TUNE.hip, UpLeg: 1 - TUNE.hip } : { UpLeg: 0.75, Hips: 0.25 }, scale: 1.05 },
       { bone: 'UpLeg', f: 0.5, ref: 'UpLeg', w: { UpLeg: 1 } },
       { bone: 'UpLeg', f: 0.8, ref: 'UpLeg', w: { UpLeg: 1 } },
-      { bone: 'UpLeg', f: 0.93, ref: 'UpLeg', w: { UpLeg: 0.8, Leg: 0.2 } },
-      { bone: 'Leg', f: 0.0, ref: 'Leg', w: { UpLeg: 0.5, Leg: 0.5 } },
-      { bone: 'Leg', f: 0.1, ref: 'Leg', w: { UpLeg: 0.2, Leg: 0.8 } },
+      { bone: 'UpLeg', f: 0.93, ref: 'UpLeg', w: joint('UpLeg', 'KneeHelper', 'Leg', -1) },
+      { bone: 'Leg', f: 0.0, ref: 'Leg', w: joint('UpLeg', 'KneeHelper', 'Leg', 0) },
+      { bone: 'Leg', f: 0.1, ref: 'Leg', w: joint('UpLeg', 'KneeHelper', 'Leg', 1) },
       { bone: 'Leg', f: 0.4, ref: 'Leg', w: { Leg: 1 } },
       { bone: 'Leg', f: 0.72, ref: 'Leg', w: { Leg: 1 } },
       { bone: 'Foot', f: 0.12, ref: 'Foot', w: { Leg: 0.25, Foot: 0.75 } },
@@ -378,22 +431,39 @@ function buildBody(spec: BodySpec, skel: Skel) {
       { bone: 'Foot', f: 0.88, ref: 'Foot', w: { Foot: 0.6, ToeBase: 0.4 } },
       { bone: 'ToeBase', f: 0.45, ref: 'ToeBase', w: { ToeBase: 1 } },
     ], 'Toe_End', { ToeBase: 1 }, LIMB_SIDES);
+    const Pn = s > 0 ? 'Left' : 'Right';
+    T.rings[`${Pn}Hip`] = legRings[0];
+    T.rings[`${Pn}Knee`] = legRings[4];
+    T.rings[`${Pn}Ankle`] = legRings[8];
     // ---- arm: the 8 vertices around the cut-out chest patch ----
     const a = rows[iA], m = rows[iA + 1], b = rows[iA + 2];
     const armRoot = [a[col(2)], a[col(3)], a[col(4)], m[col(4)], b[col(4)], b[col(3)], b[col(2)], m[col(2)]];
+    // with the shoulder helper an extra ring sits on the joint, carried rigidly by the helper (half the arm's
+    // turn), like the elbow and knee; without it the first ring is a plain Arm/Shoulder blend
+    const shoulderRings: Station[] = armH && TUNE.jointRing > 0
+      ? [
+          { bone: 'Arm', f: TUNE.jointRing, ref: 'Arm', w: { ArmHelper: 1 } },
+          { bone: 'Arm', f: TUNE.rootF, ref: 'Arm', w: { ArmHelper: TUNE.armHelper, Arm: 1 - TUNE.armHelper } },
+        ]
+      : [{ bone: 'Arm', f: 0.22, ref: 'Arm', w: armH ? { ArmHelper: TUNE.armHelper, Arm: 1 - TUNE.armHelper } : { Arm: TUNE.armRoot[0], Shoulder: TUNE.armRoot[1] } }];
+    const a0 = shoulderRings.length - 1; // index shift of the rings after the shoulder
     const armRings = limb(s, armRoot, [
-      { bone: 'Arm', f: 0.22, ref: 'Arm', w: { Arm: 0.75, Shoulder: 0.25 } },
+      ...shoulderRings,
       { bone: 'Arm', f: 0.5, ref: 'Arm', w: { Arm: 1 } },
       { bone: 'Arm', f: 0.8, ref: 'Arm', w: { Arm: 1 } },
-      { bone: 'Arm', f: 0.94, ref: 'Arm', w: { Arm: 0.8, ForeArm: 0.2 } },
-      { bone: 'ForeArm', f: 0.0, ref: 'ForeArm', w: { Arm: 0.5, ForeArm: 0.5 } },
-      { bone: 'ForeArm', f: 0.1, ref: 'ForeArm', w: { Arm: 0.2, ForeArm: 0.8 } },
-      { bone: 'ForeArm', f: 0.45, ref: 'ForeArm', w: { ForeArm: 1 } },
-      { bone: 'ForeArm', f: 0.85, ref: 'ForeArm', w: { ForeArm: 1 } },
-      { bone: 'Hand', f: 0.05, ref: 'Hand', w: { ForeArm: 0.4, Hand: 0.6 } },
+      { bone: 'Arm', f: 0.94, ref: 'Arm', w: joint('Arm', 'ElbowHelper', 'ForeArm', -1) },
+      { bone: 'ForeArm', f: 0.0, ref: 'ForeArm', w: joint('Arm', 'ElbowHelper', 'ForeArm', 0) },
+      { bone: 'ForeArm', f: 0.1, ref: 'ForeArm', w: joint('Arm', 'ElbowHelper', 'ForeArm', 1) },
+      // forearm rings take a growing share of the twist bone (half the hand's roll), so wrist roll is spread
+      { bone: 'ForeArm', f: 0.45, ref: 'ForeArm', w: twistW(0) },
+      { bone: 'ForeArm', f: 0.85, ref: 'ForeArm', w: twistW(1) },
+      { bone: 'Hand', f: 0.05, ref: 'Hand', w: TUNE.helpers ? { ForeArmTwist: TUNE.twist[2], Hand: 1 - TUNE.twist[2] } : { ForeArm: 0.4, Hand: 0.6 } },
       { bone: 'Hand', f: 0.45, ref: 'Hand', w: { Hand: 1 } },
-      { bone: 'Hand', f: 0.82, ref: 'Hand', w: { Hand: 1 } },
+      { bone: 'Hand', f: 0.74, ref: 'Hand', w: { Hand: 1 } }, // clear of the pinky knuckle, which sits further back
     ], null, {}, LIMB_SIDES);
+    T.rings[`${Pn}Shoulder`] = armRings[0];
+    T.rings[`${Pn}Elbow`] = armRings[4 + a0];
+    T.rings[`${Pn}Wrist`] = armRings[8 + a0];
 
     // ---- fingers: the hand ends in a knuckle grid (5 points on the back, 5 on the palm); each of the four
     // quads across it is the root of one 4-sided finger ----
@@ -429,7 +499,7 @@ function buildBody(spec: BodySpec, skel: Skel) {
     });
 
     // ---- thumb: cut the hand quad nearest the thumb joint (between the wrist ring and the mid-hand ring) ----
-    const r0 = armRings[8], r1 = armRings[9];
+    const r0 = armRings[8 + a0], r1 = armRings[9 + a0];
     const thumbJ = jp(`${s > 0 ? 'Left' : 'Right'}HandThumb1`);
     let bestK = 0, bestD = Infinity;
     for (let k = 0; k < LIMB_SIDES; k++) {
@@ -442,9 +512,20 @@ function buildBody(spec: BodySpec, skel: Skel) {
     const quadIds = [r0[bestK], r0[k1], r1[k1], r1[bestK]];
     const fi = T.faces.findIndex((f) => f.v.length === 4 && quadIds.every((i) => f.v.includes(i)));
     if (fi >= 0) T.faces.splice(fi, 1);
+    // the first thumb ring must sit clear of the hand surface, or it cuts the hand faces next to the hole
+    const left = (i: number) => { const p = T.verts[i].p; return new Vector3(p.x * s, p.y, p.z); };
+    const qc = quadIds.map(left).reduce((acc, p) => acc.add(p), new Vector3()).multiplyScalar(0.25);
+    const [h0, h1] = segOf('LeftHand');
+    const hAxis = h1.clone().sub(h0).normalize();
+    const nOut = qc.clone().sub(h0).addScaledVector(hAxis, -qc.clone().sub(h0).dot(hAxis)).normalize();
+    const [t0, t1] = segOf('LeftHandThumb1');
+    const c0 = t0.clone().lerp(t1, 0.45);
+    const tq = boneAt(spec.sections.LeftThumb1, 0.45);
+    const tr = ((tq.front + tq.back + tq.out + tq.in) / 4) * 0.75;
+    const lift = Math.max(0, 0.9 * tr - c0.clone().sub(qc).dot(nOut));
     limb(s, quadIds, [
       // the reference thumb belongs to a mitten hand; next to separate fingers it is scaled down
-      { bone: 'HandThumb1', f: 0.45, ref: 'Thumb1', w: { HandThumb1: 0.7, Hand: 0.3 }, scale: 0.75 },
+      { bone: 'HandThumb1', f: 0.45, ref: 'Thumb1', w: { HandThumb1: 0.7, Hand: 0.3 }, scale: 0.75, offset: nOut.clone().multiplyScalar(lift) },
       { bone: 'HandThumb2', f: 0.15, ref: 'Thumb2', w: { HandThumb1: 0.5, HandThumb2: 0.5 }, scale: 0.75 },
       { bone: 'HandThumb2', f: 0.7, ref: 'Thumb2', w: { HandThumb2: 1 }, scale: 0.7 },
     ], 'HandThumb_End', { HandThumb2: 1 }, 4);
@@ -454,7 +535,10 @@ function buildBody(spec: BodySpec, skel: Skel) {
 
 const SKIN = new Color('#c99a7c');
 
+export interface LowTopo { pos: Vector3[]; tris: number[][]; weights: Weights[]; rings: Record<string, number[]> }
+
 export function buildLowBody(seed: number, femininity: number) {
+  TUNE = { ...TUNE_DEFAULT, ...((globalThis as unknown as { __lbTune?: Partial<typeof TUNE_DEFAULT> }).__lbTune ?? {}) };
   const spec = bodySpec(femininity);
   const skel = buildSkeleton(lowBoneDefs(spec));
   const T = buildBody(spec, skel);
@@ -472,11 +556,12 @@ export function buildLowBody(seed: number, femininity: number) {
     return top.map(([i, v]) => [i, v / sum] as [number, number]);
   };
   const paint = { base: SKIN };
-  for (const [a, b, c] of tris) {
-    const A = T.verts[a], B = T.verts[b], C = T.verts[c];
-    mb.tri(A.p, B.p, C.p, wts(A.w), wts(B.w), wts(C.w), paint);
-  }
+  const vw = T.verts.map((v) => wts(v.w));
+  for (const [a, b, c] of tris) mb.tri(T.verts[a].p, T.verts[b].p, T.verts[c].p, vw[a], vw[b], vw[c], paint);
   const { geometry } = mb.geometry();
+  // shared-vertex topology for the pose tests (the render mesh is flat-shaded, so its vertices are split)
+  const topo: LowTopo = { pos: T.verts.map((v) => v.p.clone()), tris, weights: vw, rings: T.rings };
+  geometry.userData.lowTopo = topo;
   const material = new MeshStandardMaterial({ vertexColors: true, flatShading: true, roughness: 0.82, metalness: 0 });
   return { skel, mb, geometry, material, check };
 }

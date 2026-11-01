@@ -32,7 +32,7 @@ export function fingerLayout(spec: BodySpec): FingerLayout {
   const knuckle = new Vector3(K0.x, K0.y + (sec.in - sec.out) / 2, K0.z + (sec.front - sec.back) / 2);
   const lenK = [0.93, 1, 0.94, 0.76];
   const backX = [0.002, 0, 0.003, 0.008].map((x) => x * k);
-  const spread = [0.1, 0.02, -0.06, -0.14]; // fan out, index towards the thumb
+  const spread = [0.1, 0.02, -0.05, -0.09]; // fan out, index towards the thumb
   const fingers = FINGERS.map((name, i) => {
     const base = new Vector3(knuckle.x - backX[i], knuckle.y, knuckle.z + halfWidth * (0.75 - 0.5 * i));
     const d = dir.clone().add(new Vector3(0, 0, spread[i])).normalize();
@@ -82,6 +82,12 @@ export function lowBoneDefs(spec: BodySpec): BoneDef[] {
       { name: `${P}Foot`, parent: `${P}Leg`, p: m('LeftFoot'), tail: `${P}ToeBase` },
       { name: `${P}ToeBase`, parent: `${P}Foot`, p: m('LeftToeBase'), tail: `${P}Toe_End` },
       { name: `${P}Toe_End`, parent: `${P}ToeBase`, p: new Vector3(m('LeftToeBase').x, m('LeftToeBase').y, toeZ) },
+      // helper bones (see helpers.ts): on the joint, turned half the joint angle by driveHelpers
+      { name: `${P}ArmHelper`, parent: `${P}Shoulder`, p: m('LeftArm') },
+      { name: `${P}ElbowHelper`, parent: `${P}Arm`, p: m('LeftForeArm') },
+      { name: `${P}KneeHelper`, parent: `${P}UpLeg`, p: m('LeftLeg') },
+      { name: `${P}HipHelper`, parent: 'Hips', p: m('LeftUpLeg') },
+      { name: `${P}ForeArmTwist`, parent: `${P}ForeArm`, p: m('LeftForeArm').lerp(m('LeftHand'), 0.5) },
     );
     // four fingers, three segments each, plus an end marker
     for (const f of fingers.fingers) {
@@ -97,4 +103,4 @@ export function lowBoneDefs(spec: BodySpec): BoneDef[] {
 }
 
 /** Bones that carry geometry (end markers excluded). */
-export const isEndBone = (name: string) => /_End$/.test(name);
+export const isEndBone = (name: string) => /_End$|Helper$|Twist$/.test(name);

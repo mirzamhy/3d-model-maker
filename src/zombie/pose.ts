@@ -283,3 +283,33 @@ export function applyPose(r: Rig, pose: PoseName, t: number) {
 
   groundTo(r, contacts);
 }
+
+// ---- F3 pose battery: held poses at the joint extremes, for the automated deformation tests ----
+const still = (r: Rig, arm: ArmPose, legs?: (s: 1 | -1) => void) => {
+  armPose(r, 1, arm);
+  armPose(r, -1, arm);
+  if (legs) { legs(1); legs(-1); }
+};
+const relaxed: ArmPose = { shoulder: [0, 0], arm: [0, 0, 0], elbow: 0, wrist: 0, curl: [0, 0, 0] };
+export const POSE_TESTS: Array<{ name: string; set: (r: Rig) => void }> = [
+  { name: 'tpose', set: () => {} },
+  { name: 'apose', set: (r) => still(r, { ...relaxed, arm: [0, 0, 45] }) },
+  { name: 'armsdown', set: (r) => still(r, { ...relaxed, shoulder: [6, 0], arm: [0, 6, 80] }) },
+  { name: 'armsup', set: (r) => still(r, { ...relaxed, shoulder: [-14, 0], arm: [0, 0, -78] }) },
+  { name: 'armsfwd', set: (r) => still(r, { ...relaxed, shoulder: [0, 10], arm: [0, 85, 0] }) },
+  { name: 'armsback', set: (r) => still(r, { ...relaxed, arm: [0, -40, 70] }) },
+  { name: 'elbow140', set: (r) => still(r, { ...relaxed, arm: [0, 20, 60], elbow: 140 }) },
+  { name: 'forearmtwist', set: (r) => { still(r, { ...relaxed, arm: [0, 0, 45] }); for (const P of ['Left', 'Right']) r.bones[`${P}ForeArm`]?.rotation.set(Math.PI / 2, 0, 0); } },
+  { name: 'wristtwist', set: (r) => { still(r, { ...relaxed, arm: [0, 0, 45] }); for (const P of ['Left', 'Right']) r.bones[`${P}Hand`]?.rotation.set(Math.PI / 2, 0, 0); } },
+  { name: 'fist', set: (r) => still(r, { ...relaxed, arm: [0, 0, 45], curl: [85, 95, 70] }) },
+  { name: 'knee150', set: (r) => still(r, { ...relaxed, arm: [0, 0, 70] }, (s) => legPose(r, s, -40, 150, 0)) },
+  { name: 'squat', set: (r) => { rot(r, 'Spine', 18); rot(r, 'Spine1', 8); still(r, { ...relaxed, shoulder: [0, 10], arm: [0, 80, 0] }, (s) => legPose(r, s, -110, 125, -19, 8)); } },
+  { name: 'kick', set: (r) => { still(r, { ...relaxed, arm: [0, 0, 70] }); legPose(r, 1, -90, 0, 0); } },
+  { name: 'splits', set: (r) => still(r, { ...relaxed, arm: [0, 0, 45] }, (s) => legPose(r, s, 0, 0, 0, 45)) },
+  { name: 'bendfwd', set: (r) => { rot(r, 'Spine', 30); rot(r, 'Spine1', 20); rot(r, 'Spine2', 10); rot(r, 'Neck', 10); rot(r, 'Head', 15); still(r, { ...relaxed, arm: [0, 0, 70] }); } },
+  { name: 'twist', set: (r) => { rot(r, 'Spine', 0, 20); rot(r, 'Spine1', 0, 15); rot(r, 'Spine2', 0, 10); rot(r, 'Head', 0, 40); still(r, { ...relaxed, arm: [0, 0, 70] }); } },
+  { name: 'walk0', set: (r) => applyPose(r, 'hwalk', 0) },
+  { name: 'walk1', set: (r) => applyPose(r, 'hwalk', 0.28) },
+  { name: 'walk2', set: (r) => applyPose(r, 'hwalk', 0.56) },
+  { name: 'walk3', set: (r) => applyPose(r, 'hwalk', 0.83) },
+];
