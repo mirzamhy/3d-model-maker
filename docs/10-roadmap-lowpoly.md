@@ -255,7 +255,17 @@ Berat dan otot juga menggeser garis lengan keluar (`ARM_PUSH`), kalau tidak leng
 
 **Belum:** panjang kaki sebagai slider terpisah (tinggi saat ini menskala seluruh badan), slider femininity di panel (sekarang selalu pria dan wanita berdampingan), dan fit silhouette untuk bentuk di luar rata-rata (ujung "berotot" referensi Big dude belum diukur).
 
-## 11. Catatan
+## 11. Hasil F6 (kepala procedural, versi pertama)
+
+Kepala dibuat dari nol di dalam jaring badan yang sama (`body.ts`, tanpa file luar, jadi lisensi mesh Sketchfab tidak terlibat):
+- 7 baris kepala di atas baris rahang, pada tinggi relatif terhadap tinggi kepala (`HEAD_ROWS`): dagu, mulut, dasar hidung, mata, alis, dahi, tengkorak; lalu kipas di ubun-ubun. Tiap baris berupa elips tengkorak (lebar dari data referensi, tonjolan hidung dan dagu bawaan data dibuang) ditambah relief wajah `faceDz` (dagu, bibir, ujung hidung selebar satu vertex, pangkal hidung, cekungan mata, alis).
+- Telinga: satu quad kepala dipotong di tiap sisi (agak ke belakang garis tengah) lalu tumbuh jadi daun telinga pipih dua cincin; tertutup (`checkClosed` tetap 0 sisi terbuka).
+- Mata, alis, bibir dan rambut adalah muka berwarna (`Paint.rule` membaca titik pusat muka), bukan geometri. Wanita mendapat rambut panjang di belakang kepala (hanya warna).
+- 1684 segitiga per badan (+128). Skor siluet nyaris tidak berubah (pria 0.907, wanita 0.863), baterai pose F3 sama, mesh tertutup.
+
+**Batas versi ini.** 12 kolom per cincin membuat wajah kasar: hidung dan mata hanya berupa baji dan segitiga, rambut hanya warna sehingga siluetnya tetap bulat, dan wajah wanita sama dengan pria selain rambut. Untuk wajah yang lebih meyakinkan perlu cincin kepala 16–20 kolom yang disambung ke leher 12 kolom dengan `bridge`, rambut sebagai geometri (F7), dan variasi bentuk wajah di slider.
+
+## 12. Catatan
 
 - Lisensi pack referensi belum dicek. Selama masih dipakai sebagai angka acuan (F0), aman. Mesh-nya jangan dimasukkan ke repo.
 - Model "Argon (Gemini)" dan "Low-poly" lama tetap ada untuk perbandingan.
