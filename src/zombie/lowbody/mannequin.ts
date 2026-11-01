@@ -4,7 +4,7 @@
 import { BufferGeometry, Color, Float32BufferAttribute, LineBasicMaterial, LineLoop, Matrix4, MeshStandardMaterial, Quaternion, Vector3, type Object3D } from 'three';
 import { MeshBuilder, ellipsoid, rigid } from '../mesh';
 import { buildSkeleton, type Skel } from '../skeleton';
-import { bodySpec, type BodySpec, type Section } from './bodySpec';
+import { bodySpec, type BodySpec, type Section, type Shape } from './bodySpec';
 import { isEndBone, lowBoneDefs } from './rigLow';
 
 /** Which measured reference bone (and which of its six stations) shapes each rig bone. */
@@ -65,8 +65,8 @@ function silhouetteLine(spec: BodySpec, color: string): Object3D {
   return line;
 }
 
-export function buildLowRig(seed: number, femininity: number) {
-  const spec = bodySpec(femininity);
+export function buildLowRig(seed: number, femininity: number, shape?: Shape) {
+  const spec = bodySpec(femininity, undefined, shape);
   const skel = buildSkeleton(lowBoneDefs(spec));
   const mb = new MeshBuilder(seed, false);
   addPieces(mb, skel, spec);

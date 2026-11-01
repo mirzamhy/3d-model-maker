@@ -10,7 +10,7 @@
 import { Color, MeshStandardMaterial, Vector3 } from 'three';
 import { MeshBuilder, type Weights } from '../mesh';
 import { buildSkeleton, type Skel } from '../skeleton';
-import { boneAt, bodySpec, trunkAt, type BodySpec, type Section } from './bodySpec';
+import { boneAt, bodySpec, trunkAt, type BodySpec, type Section, type Shape } from './bodySpec';
 import { fingerLayout, lowBoneDefs } from './rigLow';
 
 type W = Record<string, number>;
@@ -579,9 +579,9 @@ const SKIN = new Color('#c99a7c');
 
 export interface LowTopo { pos: Vector3[]; tris: number[][]; weights: Weights[]; rings: Record<string, number[]> }
 
-export function buildLowBody(seed: number, femininity: number, tune?: FitTune) {
+export function buildLowBody(seed: number, femininity: number, tune?: FitTune, shape?: Shape) {
   TUNE = { ...TUNE_DEFAULT, ...fitFor(femininity), ...((globalThis as unknown as { __lbTune?: Partial<typeof TUNE_DEFAULT> }).__lbTune ?? {}), ...(tune ?? {}) };
-  const spec = bodySpec(femininity);
+  const spec = bodySpec(femininity, undefined, shape);
   const skel = buildSkeleton(lowBoneDefs(spec));
   const T = buildBody(spec, skel);
   const tris = T.triangles();

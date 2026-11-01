@@ -13,6 +13,7 @@ import { buildZombie2 } from './argon/zombie2';
 import { buildImported, hasImport } from './import/importMesh';
 import { buildLowRig } from './lowbody/mannequin';
 import { buildLowBody } from './lowbody/body';
+import type { Shape } from './lowbody/bodySpec';
 import { realMaterial } from './real/materials';
 import { makeVariant, type RCtx } from './real/variant';
 import { BONE_DEFS, buildSkeleton } from './skeleton';
@@ -108,9 +109,9 @@ function buildReal(seed: number) {
   return { skel, mb, geometry, material };
 }
 
-export function buildZombie(seed = 1, style: Style = 'real', opts: { femininity?: number } = {}): Rig {
+export function buildZombie(seed = 1, style: Style = 'real', opts: { femininity?: number; shape?: Shape } = {}): Rig {
   const built: { skel: ReturnType<typeof buildSkeleton>; mb: { triangles: number }; geometry: import('three').BufferGeometry; material: Material | Material[]; extras?: import('three').Object3D[] } =
-    style === 'lowrig' ? buildLowRig(seed, opts.femininity ?? 0) : style === 'lowbody' ? buildLowBody(seed, opts.femininity ?? 0) : style === 'import' && hasImport() ? buildImported() : style === 'argon' ? buildArgon(seed) : style === 'zombie2' ? buildZombie2(seed) : style === 'lowpoly' ? buildLowpoly(seed) : buildReal(seed);
+    style === 'lowrig' ? buildLowRig(seed, opts.femininity ?? 0, opts.shape) : style === 'lowbody' ? buildLowBody(seed, opts.femininity ?? 0, undefined, opts.shape) : style === 'import' && hasImport() ? buildImported() : style === 'argon' ? buildArgon(seed) : style === 'zombie2' ? buildZombie2(seed) : style === 'lowpoly' ? buildLowpoly(seed) : buildReal(seed);
   const { skel, mb, geometry, material } = built;
   const mesh = new SkinnedMesh(geometry, material);
   mesh.castShadow = true;

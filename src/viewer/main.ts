@@ -26,7 +26,7 @@ import { runPoseTests, skinPositions, summarise } from '../zombie/lowbody/poseTe
 import { driveHelpers } from '../zombie/lowbody/helpers';
 import { scoreBody, trunkCurves } from '../zombie/lowbody/silhouette';
 import { buildLowBody, type FitTune } from '../zombie/lowbody/body';
-import { bodySpec } from '../zombie/lowbody/bodySpec';
+import { bodySpec, SHAPE_RANGE, type Shape } from '../zombie/lowbody/bodySpec';
 import { fitGroup } from '../zombie/lowbody/fit';
 import { fittedBounds, getImportName, getImportOpts, hasImport, lastReport, loadGlb, setImportOpts } from '../zombie/import/importMesh';
 import { RigOverlay } from './overlay';
@@ -135,6 +135,9 @@ interface Actor {
 }
 let actors: Actor[] = [];
 let overlays: RigOverlay[] = [];
+const lowBodyStyle = () => state.style === 'lowrig' || state.style === 'lowbody';
+// body sliders (F4), shared by the male and female figure
+const shape: Required<Shape> = { height: 0, shoulder: 1, hip: 1, girth: 1, muscle: 1 }; // height 0 = the reference stature
 let heldTest: (typeof POSE_TESTS)[number] | null = null;
 
 const HORDE: Array<{ x: number; z: number; ry: number; pose: PoseName; seed: number }> = [
@@ -155,7 +158,7 @@ function rebuild() {
     scene.remove(o.group);
   }
   overlays = [];
-  const build = (seed: number, femininity = 0) => buildZombie(seed, state.style, { femininity });
+  const build = (seed: number, femininity = 0) => buildZombie(seed, state.style, { femininity, shape: lowBodyStyle() ? shape : undefined });
   if (state.view === '4 view') {
     actors = [0, 1, 2, 3].map((i) => {
       const rig = build(state.seed);
@@ -190,6 +193,7 @@ function rebuild() {
   for (const a of actors) scene.add(a.rig.root);
   setView(state.view);
   updateStats();
+  syncShape();
 }
 
 function setView(v: View) {
@@ -327,6 +331,56 @@ const seedEl = document.getElementById('seed') as HTMLInputElement;
 seedEl.value = String(state.seed);
 seedEl.onchange = () => {
   state.seed = Math.max(1, Number(seedEl.value) || 1);
+  rebuild();
+};
+// ---------- body sliders (F4) ----------
+const shapeBox = document.getElementById('shapeBox')!;
+const shapeHost = document.getElementById('shapeSliders')!;
+const shapeEls: Record<string, { input: HTMLInputElement; out: HTMLSpanElement }> = {};
+const SHAPE_LABEL: Record<string, string> = { height: 'Tinggi (m, 0 = acuan)', shoulder: 'Bahu', hip: 'Pinggul', girth: 'Berat / tebal', muscle: 'Otot' };
+let shapeTimer = 0;
+for (const k of Object.keys(SHAPE_RANGE) as Array<keyof typeof SHAPE_RANGE>) {
+  const [lo, hi] = SHAPE_RANGE[k];
+  const wrap = document.createElement('label');
+  wrap.style.cssText = 'display:block;margin:4px 0';
+  const out = document.createElement('span');
+  out.style.float = 'right';
+  const input = document.createElement('input');
+  input.type = 'range';
+  input.min = String(k === 'height' ? 0 : lo);
+  input.max = String(hi);
+  input.step = k === 'height' ? '0.01' : '0.01';
+  input.style.width = '100%';
+  const show = () => (out.textContent = Number(input.value) === 0 && k === 'height' ? 'acuan' : Number(input.value).toFixed(2));
+  input.oninput = () => {
+    let v = Number(input.value);
+    if (k === 'height' && v > 0 && v < lo) v = lo; // 0 stays "reference", otherwise at least the lower limit
+    shape[k] = v;
+    show();
+    clearTimeout(shapeTimer);
+    shapeTimer = window.setTimeout(() => rebuild(), 60);
+  };
+  wrap.append(SHAPE_LABEL[k], out, input);
+  shapeHost.append(wrap);
+  shapeEls[k] = { input, out };
+  show();
+}
+const syncShape = () => {
+  shapeBox.style.display = lowBodyStyle() ? '' : 'none';
+  for (const [k, e] of Object.entries(shapeEls)) {
+    e.input.value = String(shape[k as keyof Shape]);
+    e.out.textContent = k === 'height' && shape.height === 0 ? 'acuan' : shape[k as keyof Shape].toFixed(2);
+  }
+};
+document.getElementById('shapeReset')!.onclick = () => {
+  Object.assign(shape, { height: 0, shoulder: 1, hip: 1, girth: 1, muscle: 1 });
+  syncShape();
+  rebuild();
+};
+document.getElementById('shapeRand')!.onclick = () => {
+  const r = (lo: number, hi: number) => +(lo + Math.random() * (hi - lo)).toFixed(2);
+  Object.assign(shape, { height: r(1.55, 1.95), shoulder: r(0.9, 1.2), hip: r(0.9, 1.2), girth: r(0.85, 1.2), muscle: r(0.85, 1.35) });
+  syncShape();
   rebuild();
 };
 document.getElementById('rand')!.onclick = () => {
@@ -486,6 +540,13 @@ async function exportGlb(name: string) {
       syncImportUi();
     }
     return { name: getImportName(), report: lastReport(), bounds: fittedBounds() };
+  },
+  shape,
+  /** Set body sliders and rebuild. */
+  setShape(p: Shape) {
+    Object.assign(shape, p);
+    rebuild();
+    frame(0);
   },
   stats: () => actors[0].rig.stats,
   actors: () => actors,

@@ -237,7 +237,25 @@ Jalankan dari halaman: `__zm.silScore()` (skor badan sekarang), `__zm.fitGroup('
 - Parameter fit per referensi berisik (banyak menempel ke batas 0.83/1.17), jadi tidak dipakai langsung sebagai rentang slider F4. F4 sebaiknya memakai beberapa skalar global (tinggi, lebar bahu, pinggul, tebal), bukan 18 pengali tinggi.
 - Yang dikunci: `FIT_MALE`/`FIT_FEMALE` di `body.ts`, dicampur menurut femininity. Paling jelas: kaki 12 % terlalu lebar (`legW` 0.876 untuk keduanya) dan pinggang 6 % terlalu lebar. Baterai pose F3 diulang: tidak ada regresi, mesh tetap tertutup.
 
-## 10. Catatan
+## 10. Hasil F4 (slider badan)
+
+Lima slider di panel "Bentuk badan (F4)" (muncul untuk gaya `lowrig`/`lowbody`, berlaku ke pria dan wanita sekaligus; tombol Reset dan Acak). Logikanya ada di `bodySpec(femininity, height, shape)` (`Shape`, `SHAPE_RANGE`), jadi rig, mannequin dan badan ikut:
+
+| Slider | Rentang | Efek |
+|---|---|---|
+| Tinggi | 1.5–2.0 m (0 = tinggi acuan kelompok) | semua ukuran proporsional terhadap tinggi |
+| Bahu | 0.85–1.25 | lengan bergeser keluar, baris dada/bahu melebar |
+| Pinggul | 0.85–1.25 | kaki bergeser keluar, baris panggul melebar |
+| Berat / tebal | 0.8–1.3 | tebal torso dan semua anggota badan (bukan tangan, kaki, leher, kepala) |
+| Otot | 0.8–1.5 | lengan dan kaki membesar lebih dari tebal, dada mengisi; pinggang tetap |
+
+Berat dan otot juga menggeser garis lengan keluar (`ARM_PUSH`), kalau tidak lengan yang menggantung menembus badan yang lebih tebal. API: `__zm.setShape({girth:1.2, ...})`, `__zm.shape`.
+
+**Diuji:** 14 kombinasi (tiap ujung rentang, ditambah "bruiser" dan "ramping" ekstrem, dan "pir"): semua tertutup, T-pose 0 tabrakan kecuali 2–4 di jempol/kelingking pada badan sangat kurus. Pada ujung atas (berat 1.3, otot 1.5, kombinasi bruiser) lengan turun, jalan, dan jongkok menunjukkan lebih banyak kontak daging (jongkok 75 → 110–190 lipatan), yang wajar untuk badan tebal; segitiga terbalik naik sedikit (39 → 50).
+
+**Belum:** panjang kaki sebagai slider terpisah (tinggi saat ini menskala seluruh badan), slider femininity di panel (sekarang selalu pria dan wanita berdampingan), dan fit silhouette untuk bentuk di luar rata-rata (ujung "berotot" referensi Big dude belum diukur).
+
+## 11. Catatan
 
 - Lisensi pack referensi belum dicek. Selama masih dipakai sebagai angka acuan (F0), aman. Mesh-nya jangan dimasukkan ke repo.
 - Model "Argon (Gemini)" dan "Low-poly" lama tetap ada untuk perbandingan.
