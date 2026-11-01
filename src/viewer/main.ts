@@ -38,8 +38,11 @@ const POSE_LABEL: Record<PoseName, string> = {
   roar: 'Meraung',
   crawl: 'Merayap',
   sit: 'Duduk',
+  hwalk: 'Jalan normal',
+  squat: 'Jongkok',
+  armsup: 'Angkat tangan',
 };
-const STYLE_LABEL: Record<Style, string> = { real: 'Semi-realistis', lowpoly: 'Low-poly', argon: 'Argon (Gemini)', zombie2: 'Zombie 2 (Argon)', import: 'Impor GLB' };
+const STYLE_LABEL: Record<Style, string> = { real: 'Semi-realistis', lowpoly: 'Low-poly', argon: 'Argon (Gemini)', zombie2: 'Zombie 2 (Argon)', lowrig: 'Rangka low-poly (F1)', lowbody: 'Badan low-poly (F2)', import: 'Impor GLB' };
 const SCENE_LABEL: Record<SceneMode, string> = { horor: 'Horor', studio: 'Studio' };
 
 const state = {
@@ -125,7 +128,7 @@ interface Actor {
   t0: number;
 }
 let actors: Actor[] = [];
-let overlay: RigOverlay | null = null;
+let overlays: RigOverlay[] = [];
 
 const HORDE: Array<{ x: number; z: number; ry: number; pose: PoseName; seed: number }> = [
   { x: -1.25, z: -0.9, ry: 0.35, pose: 'walk', seed: 3 },
@@ -140,10 +143,12 @@ function rebuild() {
     scene.remove(a.rig.root);
     a.rig.mesh.geometry.dispose();
   }
-  overlay?.dispose();
-  if (overlay) scene.remove(overlay.group);
-  overlay = null;
-  const build = (seed: number) => buildZombie(seed, state.style);
+  for (const o of overlays) {
+    o.dispose();
+    scene.remove(o.group);
+  }
+  overlays = [];
+  const build = (seed: number, femininity = 0) => buildZombie(seed, state.style, { femininity });
   if (state.view === '4 view') {
     actors = [0, 1, 2, 3].map((i) => {
       const rig = build(state.seed);
@@ -158,10 +163,22 @@ function rebuild() {
       rig.root.rotation.y = h.ry;
       return { rig, pose: h.pose, t0: i * 0.7 };
     });
+  } else if (state.style === 'lowrig' || state.style === 'lowbody') {
+    // male and female side by side, each with its own rig overlay
+    actors = [0, 1].map((f) => {
+      const rig = build(state.seed, f);
+      rig.root.position.x = f ? 0.95 : -0.95;
+      return { rig, t0: 0 };
+    });
+    for (const a of actors) {
+      const o = new RigOverlay(a.rig, labelHost);
+      overlays.push(o);
+      scene.add(o.group);
+    }
   } else {
     actors = [{ rig: build(state.seed), t0: 0 }];
-    overlay = new RigOverlay(actors[0].rig, labelHost);
-    scene.add(overlay.group);
+    overlays = [new RigOverlay(actors[0].rig, labelHost)];
+    scene.add(overlays[0].group);
   }
   for (const a of actors) scene.add(a.rig.root);
   setView(state.view);
@@ -194,7 +211,7 @@ function setView(v: View) {
     kanan: new Vector3(-1, 0.06, 0),
     bebas: new Vector3(0.55, 0.12, 1),
   };
-  at(dirs[v], 4.4);
+  at(dirs[v], state.style === 'lowrig' || state.style === 'lowbody' ? 7.2 : 4.4); // two figures side by side need more room
 }
 
 function resize() {
@@ -221,6 +238,9 @@ function frame(dt: number) {
   t += dt;
   for (const a of actors) {
     applyPose(a.rig, a.pose ?? state.pose, t + a.t0);
+    // the reference outline is drawn in T-pose, so it only makes sense there
+    const outline = a.rig.root.getObjectByName('refSilhouette');
+    if (outline) outline.visible = (a.pose ?? state.pose) === 'tpose';
     setXray(a.rig, state.xray);
   }
   if (state.spin && state.view !== '4 view') {
@@ -231,10 +251,11 @@ function frame(dt: number) {
   controls.update();
   const cam = state.view === '4 view' ? ortho : persp;
   for (const a of actors) a.rig.root.updateMatrixWorld(true);
-  if (overlay) {
-    overlay.group.visible = state.rig;
-    overlay.update(cam, stage.clientWidth, stage.clientHeight, state.rig && state.labels);
-  }
+  overlays.forEach((o, i) => {
+    o.group.visible = state.rig;
+    // labels only for the first figure, two sets would overlap
+    o.update(cam, stage.clientWidth, stage.clientHeight, state.rig && state.labels && i === 0);
+  });
   const title = document.getElementById('title')!;
   title.style.display = state.rig ? '' : 'none';
   renderer.render(scene, cam);
@@ -265,7 +286,7 @@ function buttons(hostId: string, items: string[], label: (s: string) => string, 
   return render;
 }
 const needsRebuild = (a: View, b: View) => (a === '4 view' || a === 'gerombolan' || b === '4 view' || b === 'gerombolan') && a !== b;
-const syncStyle = buttons('styles', ['real', 'lowpoly', 'argon', 'zombie2', 'import'], (k) => STYLE_LABEL[k as Style], () => state.style, (k) => {
+const syncStyle = buttons('styles', ['real', 'lowpoly', 'argon', 'zombie2', 'lowrig', 'lowbody', 'import'], (k) => STYLE_LABEL[k as Style], () => state.style, (k) => {
   if (k === 'import' && !hasImport()) {
     glbFile.click();
     return;
@@ -439,6 +460,13 @@ async function exportGlb(name: string) {
   },
   capture,
   exportGlb,
+  /** Point the free camera: look at (tx, ty, tz) from (px, py, pz). */
+  look(tx: number, ty: number, tz: number, px: number, py: number, pz: number) {
+    controls.target.set(tx, ty, tz);
+    persp.position.set(px, py, pz);
+    controls.update();
+    frame(0);
+  },
   loadGlb: async (url: string, opts?: Parameters<typeof setImportOpts>[0]) => {
     await importGlb(url, url.split('/').pop() ?? 'model.glb');
     if (opts) {

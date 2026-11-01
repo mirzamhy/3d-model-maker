@@ -4,8 +4,8 @@
 import { Vector3 } from 'three';
 import type { Rig } from './build';
 
-export type PoseName = 'tpose' | 'idle' | 'walk' | 'reach' | 'attack' | 'lunge' | 'roar' | 'crawl' | 'sit';
-export const POSES: PoseName[] = ['tpose', 'idle', 'walk', 'reach', 'attack', 'lunge', 'roar', 'crawl', 'sit'];
+export type PoseName = 'tpose' | 'idle' | 'walk' | 'reach' | 'attack' | 'lunge' | 'roar' | 'crawl' | 'sit' | 'hwalk' | 'squat' | 'armsup';
+export const POSES: PoseName[] = ['tpose', 'idle', 'walk', 'reach', 'attack', 'lunge', 'roar', 'crawl', 'sit', 'hwalk', 'squat', 'armsup'];
 
 const D = Math.PI / 180;
 
@@ -233,6 +233,52 @@ export function applyPose(r: Rig, pose: PoseName, t: number) {
       ['RightToe_End', 0.02],
       ['LeftHand', 0.025],
     ];
+  }
+
+  // ---- human motion tests (upright, no zombie hunch) ----
+  if (pose === 'hwalk') {
+    const ph = 2 * Math.PI * 0.9 * t;
+    rot(r, 'Hips', 0, 5 * Math.sin(ph), 0);
+    rot(r, 'Spine', 3, -4 * Math.sin(ph), 0);
+    rot(r, 'Spine2', 2, -3 * Math.sin(ph), 0);
+    rot(r, 'Head', -4, 4 * Math.sin(ph), 0);
+    const leg = (s: 1 | -1, phase: number) => {
+      // hip swings forward as phase goes 0 -> pi/2; the knee folds most mid-swing, once the thigh is already forward
+      const hip = -24 * Math.sin(phase);
+      const knee = 6 + 50 * Math.pow(Math.max(0, Math.cos(phase - 0.5)), 1.5);
+      legPose(r, s, hip, knee, -(hip + knee) * 0.55 + 6 * Math.sin(phase));
+    };
+    leg(1, ph);
+    leg(-1, ph + Math.PI);
+    const arm = (s: 1 | -1, phase: number): ArmPose => ({ shoulder: [6, 0], arm: [-24 * Math.sin(phase), 6, 76], elbow: 16 + 10 * Math.max(0, Math.sin(phase)), wrist: 4, curl: [20, 26, 30] });
+    armPose(r, 1, arm(1, ph + Math.PI));
+    armPose(r, -1, arm(-1, ph));
+  }
+
+  if (pose === 'squat') {
+    // slow full squat and back up: deepest hip and knee bends
+    const k = 0.5 - 0.5 * Math.cos(t * 1.4);
+    rot(r, 'Spine', 18 * k, 0, 0);
+    rot(r, 'Spine1', 8 * k, 0, 0);
+    rot(r, 'Head', -16 * k, 0, 0);
+    const hip = -110 * k, knee = 125 * k;
+    legPose(r, 1, hip, knee, -(hip + knee) - 4 * k, 8 * k);
+    legPose(r, -1, hip, knee, -(hip + knee) - 4 * k, 8 * k);
+    const reach: ArmPose = { shoulder: [0, 10 * k], arm: [0, 80 * k, 80 - 80 * k], elbow: 6, wrist: 0, curl: [10, 14, 16] };
+    armPose(r, 1, reach);
+    armPose(r, -1, reach);
+  }
+
+  if (pose === 'armsup') {
+    // arms swing from the sides to straight overhead, body twists: shoulder and waist extremes
+    const k = 0.5 - 0.5 * Math.cos(t * 1.2);
+    rot(r, 'Spine', 0, 25 * Math.sin(t * 0.6), 0);
+    rot(r, 'Spine2', -6 * k, 15 * Math.sin(t * 0.6), 0);
+    const up: ArmPose = { shoulder: [-14 * k, 0], arm: [0, 0, 80 - 158 * k], elbow: 8, wrist: 0, curl: [6, 8, 10] };
+    armPose(r, 1, up);
+    armPose(r, -1, up);
+    legPose(r, 1, 0, 0, 0, 4);
+    legPose(r, -1, 0, 0, 0, 4);
   }
 
   groundTo(r, contacts);

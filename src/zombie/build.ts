@@ -11,12 +11,14 @@ import { realHead } from './real/head';
 import { buildArgon } from './argon/zombie';
 import { buildZombie2 } from './argon/zombie2';
 import { buildImported, hasImport } from './import/importMesh';
+import { buildLowRig } from './lowbody/mannequin';
+import { buildLowBody } from './lowbody/body';
 import { realMaterial } from './real/materials';
 import { makeVariant, type RCtx } from './real/variant';
 import { BONE_DEFS, buildSkeleton } from './skeleton';
 import { REAL_BONE_DEFS } from './skeletonReal';
 
-export type Style = 'real' | 'lowpoly' | 'argon' | 'zombie2' | 'import';
+export type Style = 'real' | 'lowpoly' | 'argon' | 'zombie2' | 'lowrig' | 'lowbody' | 'import';
 
 export interface Rig {
   root: Group;
@@ -30,6 +32,8 @@ export interface Rig {
   seed: number;
   style: Style;
   stats: { triangles: number; bones: number; height: number };
+  /** 0 = male, 1 = female (low-poly base bodies). */
+  femininity?: number;
 }
 
 const v = (x: number, y: number, z: number) => new Vector3(x, y, z);
@@ -104,12 +108,13 @@ function buildReal(seed: number) {
   return { skel, mb, geometry, material };
 }
 
-export function buildZombie(seed = 1, style: Style = 'real'): Rig {
-  const { skel, mb, geometry, material } =
-    style === 'import' && hasImport() ? buildImported() : style === 'argon' ? buildArgon(seed) : style === 'zombie2' ? buildZombie2(seed) : style === 'lowpoly' ? buildLowpoly(seed) : buildReal(seed);
+export function buildZombie(seed = 1, style: Style = 'real', opts: { femininity?: number } = {}): Rig {
+  const built: { skel: ReturnType<typeof buildSkeleton>; mb: { triangles: number }; geometry: import('three').BufferGeometry; material: Material | Material[]; extras?: import('three').Object3D[] } =
+    style === 'lowrig' ? buildLowRig(seed, opts.femininity ?? 0) : style === 'lowbody' ? buildLowBody(seed, opts.femininity ?? 0) : style === 'import' && hasImport() ? buildImported() : style === 'argon' ? buildArgon(seed) : style === 'zombie2' ? buildZombie2(seed) : style === 'lowpoly' ? buildLowpoly(seed) : buildReal(seed);
+  const { skel, mb, geometry, material } = built;
   const mesh = new SkinnedMesh(geometry, material);
   mesh.castShadow = true;
-  mesh.receiveShadow = style !== 'lowpoly';
+  mesh.receiveShadow = style !== 'lowpoly' && style !== 'lowrig' && style !== 'lowbody';
   mesh.frustumCulled = false;
   mesh.name = `zombie_${style}_${seed}`;
   mesh.add(skel.bones[0]);
@@ -117,7 +122,8 @@ export function buildZombie(seed = 1, style: Style = 'real'): Rig {
 
   const root = new Group();
   root.add(mesh);
-  const scale = 1 + (hash(seed, 1) - 0.5) * 0.08;
+  for (const e of built.extras ?? []) root.add(e);
+  const scale = style === 'lowrig' || style === 'lowbody' ? 1 : 1 + (hash(seed, 1) - 0.5) * 0.08;
   root.scale.setScalar(scale);
 
   const bones: Record<string, Bone> = {};
@@ -138,6 +144,7 @@ export function buildZombie(seed = 1, style: Style = 'real'): Rig {
     bindWorld,
     seed,
     style,
+    femininity: opts.femininity,
     stats: { triangles: mb.triangles, bones: skel.bones.length, height: (geometry.boundingBox!.max.y - geometry.boundingBox!.min.y) * scale },
   };
 }
