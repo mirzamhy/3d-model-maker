@@ -213,10 +213,10 @@ Jalankan: `__zm.set({style:'lowbody'}); __zm.poseTest()` (teks per pose di `.tex
 Wajib: panggil `driveHelpers(rig)` setiap frame setelah pose (viewer dan uji sudah melakukannya). Klip Mixamo/GLB di engine lain tidak menggerakkan helper; sendi lalu kembali kaku seperti bobot biasa dan siku/lutut terlihat seperti terlipat setengah. Untuk ekspor ke luar, `__lbTune = {helpers:false}` memberi bobot klasik.
 
 **Sisa:**
-- Kantong ketiak/V di depan bahu masih terlihat saat lengan diayun ke belakang. Bobot sudah mentok; perlu topologi lubang lengan yang lebih besar (3×2 quad) atau loop deltoid miring.
 - Kontak tangan ke pinggul/paha pada lengan turun dan jalan: proporsi pose, perbaiki di animasi (lengan sedikit abduksi).
 - Lipatan dalam pada siku 140°/lutut 150°/jongkok adalah kontak daging yang wajar; segitiga gepeng di lipatan dalam masih 16–40 per pose.
-- Kepal: jari menembus telapak (70 tabrakan); perlu kurva tekuk jari yang lebih kecil atau jari yang lebih tipis.
+- Kepal: beres. Penyebabnya bobot loop buku jari 70 % di tangan, jadi akar jari terlipat menembus punggung tangan. Diturunkan ke 20 % (`TUNE.knuckle`): kepal penuh 70 → 2 tabrakan (pria), 61 → 3 (wanita); setengah kepal 38 → 2.
+- Celah tipis di sudut dalam bahu belakang saat lengan ke belakang/turun: tinggal garis gelap sempit di tepi lubang lengan, mesh tetap tertutup. Dibiarkan; topologi lubang 3×2 baru dikerjakan bila terlihat mengganggu di model akhir.
 
 ## 9. Catatan
 

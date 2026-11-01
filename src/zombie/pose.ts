@@ -301,6 +301,7 @@ export const POSE_TESTS: Array<{ name: string; set: (r: Rig) => void }> = [
   { name: 'elbow140', set: (r) => still(r, { ...relaxed, arm: [0, 20, 60], elbow: 140 }) },
   { name: 'forearmtwist', set: (r) => { still(r, { ...relaxed, arm: [0, 0, 45] }); for (const P of ['Left', 'Right']) r.bones[`${P}ForeArm`]?.rotation.set(Math.PI / 2, 0, 0); } },
   { name: 'wristtwist', set: (r) => { still(r, { ...relaxed, arm: [0, 0, 45] }); for (const P of ['Left', 'Right']) r.bones[`${P}Hand`]?.rotation.set(Math.PI / 2, 0, 0); } },
+  { name: 'halffist', set: (r) => still(r, { ...relaxed, arm: [0, 0, 45], curl: [45, 55, 40] }) },
   { name: 'fist', set: (r) => still(r, { ...relaxed, arm: [0, 0, 45], curl: [85, 95, 70] }) },
   { name: 'knee150', set: (r) => still(r, { ...relaxed, arm: [0, 0, 70] }, (s) => legPose(r, s, -40, 150, 0)) },
   { name: 'squat', set: (r) => { rot(r, 'Spine', 18); rot(r, 'Spine1', 8); still(r, { ...relaxed, shoulder: [0, 10], arm: [0, 80, 0] }, (s) => legPose(r, s, -110, 125, -19, 8)); } },

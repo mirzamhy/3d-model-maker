@@ -34,7 +34,7 @@ Test poses: `Jalan normal` (hwalk), `Jongkok` (squat), `Angkat tangan` (armsup),
 | F0 measure references | done |
 | F1 rig + proportions | done |
 | F2 closed body | first version done, with 5 fingers |
-| F3 weights + automated motion tests | done (see roadmap §8, open: armpit pocket) |
+| F3 weights + automated motion tests | done (see roadmap §8; a thin slit at the arm hole remains) |
 | F4 female/body sliders, F5 silhouette "training", F6 head, F7 accessories/zombie, F8 GLB + Mixamo test | not started |
 
 Current numbers: 1556 tris per body, 63 bones + 10 helper bones (driven by `driveHelpers`). F3 added `poseTest.ts`, `helpers.ts` and `__zm.poseTest/holdTest/skin`. `checkClosed` reports 0 open, 0 doubled and 0 flipped edges for both male and female.

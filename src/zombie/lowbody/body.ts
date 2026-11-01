@@ -39,6 +39,7 @@ const TUNE_DEFAULT = {
   armRoot: [0.85, 0.15], // first arm ring without helpers: Arm, Shoulder
   helpers: true,
   armHelper: 0.3, // first arm ring past the joint ring: share of the shoulder helper
+  knuckle: 0.2, // knuckle loop: share of the hand (rest goes to the finger roots)
   jointRing: 0.05, // extra ring on the shoulder joint (0 = none)
   rootF: 0.3,
   near: 0.55, // elbow and knee: share of the helper on the rings beside the joint
@@ -477,8 +478,8 @@ function buildBody(spec: BodySpec, skel: Skel) {
       const z = K.z + FL.halfWidth * (1 - j / 2);
       const x = K.x - (j === 4 ? 0.006 * H : 0); // the pinky side of the knuckle line sits a little back
       const near = [j - 1, j].filter((f) => f >= 0 && f < 4).map((f) => `${P}Hand${FL.fingers[f].name}1`);
-      const w: W = { [`${P}Hand`]: 0.7 };
-      for (const n of near) w[n] = 0.3 / near.length;
+      const w: W = { [`${P}Hand`]: TUNE.knuckle };
+      for (const n of near) w[n] = (1 - TUNE.knuckle) / near.length;
       top.push(T.add(mir(new Vector3(x, K.y + ht, z)), w));
       bot.push(T.add(mir(new Vector3(x, K.y - ht, z)), { ...w }));
     }
