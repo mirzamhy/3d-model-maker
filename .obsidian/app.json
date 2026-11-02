@@ -1,0 +1,16 @@
+{
+  "userIgnoreFilters": [
+    "node_modules/",
+    "dist/",
+    ".claude/",
+    ".git/",
+    "tools/ref/out/"
+  ],
+  "newFileLocation": "folder",
+  "newFileFolderPath": "notes",
+  "attachmentFolderPath": "notes/attachments",
+  "alwaysUpdateLinks": true,
+  "useMarkdownLinks": true,
+  "newLinkFormat": "relative",
+  "showUnsupportedFiles": false
+}

@@ -3,3 +3,11 @@ dist/
 .claude/
 *.log
 tools/ref/out/
+
+# Obsidian per-device state
+.obsidian/workspace*.json
+.obsidian/cache
+.trash/
+*.blend1
+__pycache__/
+output/head-game/lab/*.blend
