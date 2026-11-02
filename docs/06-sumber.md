@@ -30,6 +30,16 @@ Tanda: ✔ = metadata dicek ulang lewat web saat dokumen ini ditulis (31 Okt 202
 
 13. ○ Loomis, A. (1943). *Figure Drawing for All It's Worth*. Viking Press. — Sistem unit kepala.
 
+## G. Pembentukan mesh dari nol (SDF, meshing, retopologi)
+
+Dicek 2 Nov 2026. Hasil uji di proyek ini: `docs/11-eksperimen-topologi.md`.
+
+14. ✔ Quilez, I. Smooth minimum. https://iquilezles.org/articles/smin — Rumus `smin` yang dipakai `head_lowpoly.py`.
+15. ✔ Ju, T., Losasso, F., Schaefer, S., & Warren, J. (2002). Dual contouring of Hermite data. *ACM Transactions on Graphics, 21*(3), 339–346. PDF: https://www.cs.wustl.edu/~taoju/research/dualContour.pdf
+16. ✔ Jakob, W., Tarini, M., Panozzo, D., & Sorkine-Hornung, O. (2015). Instant field-aligned meshes. *ACM Transactions on Graphics, 34*(6), 189. https://rgl.epfl.ch/publications/Jakob2015Instant
+17. ✔ Huang, J., Zhou, Y., Nießner, M., Shewchuk, J. R., & Guibas, L. J. (2018). QuadriFlow: A scalable and robust method for quadrangulation. *Computer Graphics Forum, 37*(5), 147–160. https://doi.org/10.1111/cgf.13498 — Ada di Blender (`object.quadriflow_remesh`).
+18. ○ Ji, Z., Liu, L., & Wang, Y. (2010). B-Mesh: A modeling system for base meshes of 3D articulated shapes. *Computer Graphics Forum, 29*(7). — Lihat juga roadmap §2.
+
 ## F. Spesifikasi dan repositori GitHub
 
 | Sumber | Tautan | Dipakai untuk |

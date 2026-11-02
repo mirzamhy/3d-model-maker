@@ -1,0 +1,170 @@
+{
+  "collapse": {
+    "method": "collapse",
+    "head": {
+      "vertices": 447,
+      "edges": 1347,
+      "faces": 898,
+      "triangles": 898
+    },
+    "quad_share": 0.0,
+    "closed": true,
+    "symmetry": {
+      "unmatched_vertices": 0,
+      "triangles_x_pos": 449,
+      "triangles_x_neg": 449
+    },
+    "dev_mm_mean": 0.602,
+    "dev_mm_p95": 1.309,
+    "aspect_p90": 4.88,
+    "planes": 782,
+    "slivers": 26,
+    "dihedral_p95": 68.5
+  },
+  "quadriflow": {
+    "method": "quadriflow",
+    "head": {
+      "vertices": 459,
+      "edges": 915,
+      "faces": 458,
+      "triangles": 914
+    },
+    "quad_share": 0.856,
+    "closed": true,
+    "symmetry": {
+      "unmatched_vertices": 0,
+      "triangles_x_pos": 229,
+      "triangles_x_neg": 229
+    },
+    "dev_mm_mean": 0.993,
+    "dev_mm_p95": 4.101,
+    "aspect_p90": 2.41,
+    "planes": 414
+  },
+  "planar": {
+    "method": "planar",
+    "head": {
+      "vertices": 522,
+      "edges": 1572,
+      "faces": 1048,
+      "triangles": 1048
+    },
+    "quad_share": 0.0,
+    "closed": true,
+    "symmetry": {
+      "unmatched_vertices": 0,
+      "triangles_x_pos": 524,
+      "triangles_x_neg": 524
+    },
+    "dev_mm_mean": 0.578,
+    "dev_mm_p95": 1.514,
+    "aspect_p90": 5.19,
+    "planes": 895
+  },
+  "sharp": {
+    "method": "sharp",
+    "head": {
+      "vertices": 446,
+      "edges": 1348,
+      "faces": 900,
+      "triangles": 900
+    },
+    "quad_share": 0.0,
+    "closed": false,
+    "symmetry": {
+      "unmatched_vertices": 0,
+      "triangles_x_pos": 450,
+      "triangles_x_neg": 450
+    },
+    "dev_mm_mean": 0.608,
+    "dev_mm_p95": 1.325,
+    "aspect_p90": 5.15,
+    "planes": 769
+  },
+  "qf_collapse": {
+    "method": "qf_collapse",
+    "head": {
+      "vertices": 213,
+      "edges": 633,
+      "faces": 422,
+      "triangles": 422
+    },
+    "quad_share": 0.0,
+    "closed": true,
+    "symmetry": {
+      "unmatched_vertices": 0,
+      "triangles_x_pos": 211,
+      "triangles_x_neg": 211
+    },
+    "dev_mm_mean": 1.204,
+    "dev_mm_p95": 3.847,
+    "aspect_p90": 15.86,
+    "planes": 323
+  },
+  "collapse_clean": {
+    "method": "collapse_clean",
+    "head": {
+      "vertices": 447,
+      "edges": 1347,
+      "faces": 898,
+      "triangles": 898
+    },
+    "quad_share": 0.0,
+    "closed": true,
+    "symmetry": {
+      "unmatched_vertices": 0,
+      "triangles_x_pos": 449,
+      "triangles_x_neg": 449
+    },
+    "dev_mm_mean": 0.897,
+    "dev_mm_p95": 2.647,
+    "aspect_p90": 2.42,
+    "planes": 767,
+    "slivers": 2,
+    "dihedral_p95": 62.5
+  },
+  "qf_warp": {
+    "method": "qf_warp",
+    "head": {
+      "vertices": 484,
+      "edges": 970,
+      "faces": 486,
+      "triangles": 968
+    },
+    "quad_share": 0.918,
+    "closed": true,
+    "symmetry": {
+      "unmatched_vertices": 0,
+      "triangles_x_pos": 243,
+      "triangles_x_neg": 243
+    },
+    "dev_mm_mean": 1.007,
+    "dev_mm_p95": 3.927,
+    "aspect_p90": 3.57,
+    "planes": 431,
+    "slivers": 24,
+    "dihedral_p95": 59.6
+  },
+  "collapse_soft": {
+    "method": "collapse_soft",
+    "head": {
+      "vertices": 447,
+      "edges": 1347,
+      "faces": 898,
+      "triangles": 898
+    },
+    "quad_share": 0.0,
+    "closed": true,
+    "symmetry": {
+      "unmatched_vertices": 0,
+      "triangles_x_pos": 449,
+      "triangles_x_neg": 449
+    },
+    "dev_mm_mean": 0.689,
+    "dev_mm_p95": 1.713,
+    "aspect_p90": 3.76,
+    "planes": 782,
+    "slivers": 16,
+    "dihedral_p95": 68.4
+  }
+}
