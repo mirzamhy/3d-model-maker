@@ -1,0 +1,47 @@
+{
+  "lod": "mid",
+  "objects": {
+    "Head_Main": {
+      "vertices": 447,
+      "edges": 1347,
+      "faces": 898,
+      "triangles": 898
+    },
+    "Eye_L": {
+      "vertices": 52,
+      "edges": 150,
+      "faces": 100,
+      "triangles": 100
+    },
+    "Eye_R": {
+      "vertices": 52,
+      "edges": 150,
+      "faces": 100,
+      "triangles": 100
+    },
+    "Eyebrow_L": {
+      "vertices": 20,
+      "edges": 54,
+      "faces": 36,
+      "triangles": 36
+    },
+    "Eyebrow_R": {
+      "vertices": 20,
+      "edges": 54,
+      "faces": 36,
+      "triangles": 36
+    }
+  },
+  "total": {
+    "vertices": 591,
+    "edges": 1755,
+    "faces": 1170,
+    "triangles": 1170
+  },
+  "head_symmetry": {
+    "unmatched_vertices": 0,
+    "triangles_x_pos": 449,
+    "triangles_x_neg": 449
+  },
+  "head_closed": true
+}
