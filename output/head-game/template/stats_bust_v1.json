@@ -1,0 +1,17 @@
+{
+ "head_verts_before": 459,
+ "torso_tris": 232,
+ "body": {
+  "vertices": 571,
+  "edges": 1118,
+  "faces": 549,
+  "triangles": 1138
+ },
+ "closed": true,
+ "symmetry": {
+  "unmatched_vertices": 0,
+  "triangles_x_pos": 274,
+  "triangles_x_neg": 274
+ },
+ "neck_cap_removed": 2
+}

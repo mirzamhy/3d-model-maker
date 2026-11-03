@@ -1,7 +1,7 @@
 ---
 tags: [konsep, arsitektur, part, rencana]
 dibuat: 2026-11-03
-status: usulan, menunggu konfirmasi user
+status: disetujui user 3 Nov 2026
 ---
 # Konsep: karakter dari part modular
 
@@ -76,7 +76,7 @@ notes/parts/<part>.md               kartu part: landmark, parameter, konektor, b
 4. `assemble.py` + satu spec, lalu jahit dan cek tertutup.
 5. Uji dengan referensi baru: yang berubah hanya spec dan parameter.
 
-## Keputusan yang masih terbuka
-- Cara sambung: tumpuk, jahit, atau keduanya (usulan: jahit untuk kulit, tumpuk untuk aksesori).
-- Jumlah vertex cincin leher standar: kepala Blender sekarang 10, badan F2 Three.js 12.
-- Pipeline utama: Blender atau Three.js.
+## Keputusan (user, 3 Nov 2026)
+- **Cara sambung: jahit kulit, tumpuk aksesori.** Kepala, leher, dan badan dijahit jadi satu mesh tertutup lewat cincin konektor. Telinga, alis, rambut, dan baju ditumpuk.
+- **Cincin leher = 10 titik**, sama dengan kepala baseline (`NECK_COLS`), sehingga kepala tidak diubah. Badan menambah titik sendiri di bawah leher.
+- **Pipeline utama: Blender (Python).** Badan F2 di Three.js hanya dipakai sebagai referensi bentuk.

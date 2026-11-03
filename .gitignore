@@ -11,3 +11,4 @@ tools/ref/out/
 *.blend1
 __pycache__/
 output/head-game/lab/*.blend
+tools/f2/out/

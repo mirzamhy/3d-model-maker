@@ -1,0 +1,17 @@
+{
+ "f2_dropped_head_verts": 371,
+ "band_tris": 22,
+ "character": {
+  "vertices": 1180,
+  "edges": 3064,
+  "faces": 1888,
+  "triangles": 2352
+ },
+ "closed": true,
+ "symmetry": {
+  "unmatched_vertices": 0,
+  "triangles_x_pos": 944,
+  "triangles_x_neg": 944
+ },
+ "bones": 73
+}

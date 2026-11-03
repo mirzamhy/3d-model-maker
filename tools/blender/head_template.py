@@ -100,6 +100,17 @@ EYE_COLS = [0, 12, 22, 29, 37, 48, 64, 90, 120, 150, 180]
 NECK_COLS = [0, 22, 48, 90, 120, 180]
 MUZZLE_TOP, MUZZLE_BOTTOM = -0.026, -0.112
 
+# Nose style. "sdf" (baseline v7): the nose is whatever the SDF gives on the grid, a single centre ridge with the next
+# column ~9 mm behind it, so it reads as a knife edge. "planes" (Asaro planes of the head): column 6 also runs through
+# the eye rows so the bridge has two edges; shape_nose then makes a flat front plane (bridge 4.5 mm half width ->
+# tip 8 mm), keeps the wide side planes, and a flat underside plane from the tip back to the nostril base.
+NOSE = os.environ.get("TPL_NOSE", "sdf")
+if NOSE == "planes":
+    EYE_COLS = sorted(EYE_COLS + [6])
+NOSE_W = ([0.020, -0.011, -0.026, -0.037], [0.0045, 0.0055, 0.0065, 0.008])  # front plane half width by height
+# ridge pulled back toward the face by height (m): the SDF nose stands ~19 mm out at the tip, user: "jangan mancung"
+NOSE_BACK = ([0.003, -0.011, -0.026, -0.037], [0.0, 0.0025, 0.0045, float(os.environ.get("TPL_NOSE_BACK", "0.006"))])
+
 
 def jaw_row(thetas, prev, prev_phi):
     """Per-column polar angle so each ray lands on the jaw-line target height (bisection, all columns at once)."""
@@ -254,6 +265,8 @@ def build_head():
     L.mirror_weld(ob, triangulate=False)
     snap_ob(ob)
     shape_mouth(ob)
+    if NOSE == "planes":
+        shape_nose(ob)
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
@@ -377,6 +390,41 @@ def shape_mouth(ob):
         v.co = Vector((p[0], -p[2], p[1]))
     bm.to_mesh(ob.data)
     bm.free()
+
+
+def shape_nose(ob):
+    """Planes of the nose, on the snapped mesh (head coords):
+    - ridge: centre vertices from the brow to the tip; their depth profile zr(y) is kept;
+    - front plane: the column next to the ridge moves level with the ridge (zr - 1 mm) at half width NOSE_W(y),
+      so ridge + both edges make one flat strip, narrow at the bridge, widest at the tip;
+    - underside: the vertex under the tip edge (nostril base, was ~20 mm deep) comes forward to 3 mm behind the
+      centre underside vertex, so the bottom of the nose is one flat plane facing down."""
+    co = L.mesh_arrays(ob)
+    P = L.to_head(co)
+    x, y, z = P[:, 0], P[:, 1], P[:, 2]
+    ridge = np.nonzero((np.abs(x) < 1e-6) & (z > 0.08) & (y > -0.04) & (y < 0.025))[0]
+    ridge = ridge[np.argsort(y[ridge])]
+    back = lambda yy: np.interp(yy, NOSE_BACK[0][::-1], NOSE_BACK[1][::-1])
+    P[ridge, 2] -= back(y[ridge])
+    z = P[:, 2]
+    zr = lambda yy: np.interp(yy, y[ridge], z[ridge])
+    y_tip = y[ridge].min()
+    edge = np.nonzero((np.abs(x) > 0.002) & (np.abs(x) < 0.0135) & (y > y_tip - 0.002) & (y < 0.022)
+                      & (z > zr(y) - 0.02))[0]
+    for i in edge:
+        P[i, 0] = math.copysign(np.interp(y[i], NOSE_W[0][::-1], NOSE_W[1][::-1]), x[i])
+        P[i, 2] = zr(y[i]) - 0.001
+    under_c = np.nonzero((np.abs(x) < 1e-6) & (y < y_tip - 0.004) & (y > y_tip - 0.014) & (z > 0.085))[0]
+    if len(under_c):
+        P[under_c, 2] -= 0.6 * back(y_tip)  # the underside follows the shorter tip
+        zc = z[under_c].max()
+        base = np.nonzero((np.abs(x) > 0.004) & (np.abs(x) < 0.012) & (y < y_tip - 0.002) & (y > y_tip - 0.009)
+                          & (z < zr(y) - 0.02))[0]
+        for i in base:
+            P[i, 0] = math.copysign(0.0075, x[i])
+            P[i, 2] = zc - 0.003
+    L.set_co(ob, to_bl(P))
+    print("NOSE_PLANES ridge", len(ridge), "edge", len(edge), "under", len(under_c))
 
 
 def paint(ob):

@@ -172,17 +172,20 @@ def main():
             p.use_smooth = False
             p.material_index = 0
     sc, cam = setup_scene()
-    tgt = (0, 0, -0.05)
-    d = 0.95
-    views = {"front": (0, -d, -0.03), "34": (d * 0.62, -d * 0.78, -0.02), "side": (d, 0, -0.03),
-             "back": (-d * 0.35, d * 0.94, -0.01)}
+    # PAINT_TGT_Z / PAINT_DIST frame a bigger part (bust: -0.35 / 2.0); defaults frame the head
+    tgt = (0, 0, float(os.environ.get("PAINT_TGT_Z", "-0.05")))
+    d = float(os.environ.get("PAINT_DIST", "0.95"))
+    h = tgt[2]
+    views = {"front": (0, -d, h + 0.02), "34": (d * 0.62, -d * 0.78, h + 0.03), "side": (d, 0, h + 0.02),
+             "back": (-d * 0.35, d * 0.94, h + 0.04)}
     p = lambda n: os.path.join(REN, f"game_{TAG}_{n}.png")
     sheet([shoot(sc, cam, p(n), v, tgt, (700, 820)) for n, v in views.items()], p("sheet"))
     close = {"mouth": ((0.0, -0.32, -0.065), (0, 0, -0.07)), "face34": ((0.2, -0.36, 0.0), (0, 0, -0.03)),
              "ear": ((0.30, -0.10, 0.02), (0.072, 0.02, -0.005)), "ear_back": ((0.22, 0.22, 0.02), (0.072, 0.02, -0.005))}
     sheet([shoot(sc, cam, p(n), pos, t, (800, 800)) for n, (pos, t) in close.items()], p("close_sheet"))
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, r"output\head-game\template", f"head_{TAG}.blend"))
-    bpy.ops.export_scene.gltf(filepath=os.path.join(ROOT, r"output\head-game\template", f"head_{TAG}.glb"),
+    out = os.path.join(ROOT, os.environ.get("PAINT_OUT", r"output\head-game\template"))
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, f"head_{TAG}.blend"))
+    bpy.ops.export_scene.gltf(filepath=os.path.join(out, f"head_{TAG}.glb"),
                               export_format="GLB")
     print("PAINT_DONE", TAG)
 

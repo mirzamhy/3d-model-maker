@@ -20,6 +20,10 @@ Pintu masuk semua catatan belajar. Kembali ke [Home](../Home.md).
 - [Template topologi kepala](template-topologi-kepala.md): v1–v7, loop dirancang + proyeksi ke SDF (3 Nov 2026)
 
 ## Kartu part
+- [Badan F2 + kepala baru](parts/badan-f2.md): badan lengkap F2 (rig 73 tulang) dijahit ke kepala template; pilihan user
+- [Hidung (nose)](parts/hidung.md): bidang datar Asaro (depan, samping, bawah); v2 tidak mancung, menunggu penilaian
+- [Uji gerak di browser](uji-gerak-viewer.md): lama vs baru berdampingan, jalan/jongkok/lompat/zombie; rumus rotasi sumbu dunia
+- [Torso](parts/torso.md): torso Blender v2 (cadangan, diganti badan F2)
 - [Telinga (ear)](parts/ear.md): gaya setengah hati dari referensi user; v13 **disetujui** (trace titik per titik dari gambar user, n-gon utuh)
 
 ## Referensi

@@ -21,8 +21,11 @@ for ob in [o for o in bpy.data.objects if o.type == "MESH"]:
     m.thickness = 0.00045
     m.use_even_offset = False
     m.offset = 1.0
-tgt = Vector((0, 0, -0.05))
-views = {"front": ((0, -0.62, -0.02), tgt), "34": ((0.42, -0.48, 0.0), tgt), "side": ((0.62, 0, -0.02), tgt),
+tz = float(os.environ.get("WIRE_TGT_Z", "-0.05"))  # bust: -0.35
+k = float(os.environ.get("WIRE_DIST", "1.0"))  # distance multiplier (bust: 2.2)
+tgt = Vector((0, 0, tz))
+views = {"front": ((0, -0.62 * k, tz + 0.03), tgt), "34": ((0.42 * k, -0.48 * k, tz + 0.05), tgt),
+         "side": ((0.62 * k, 0, tz + 0.03), tgt),
          "ear": ((0.30, -0.10, 0.02), Vector((0.072, 0.02, -0.005)))}
 sc.render.resolution_x, sc.render.resolution_y = 800, 900
 paths = []
