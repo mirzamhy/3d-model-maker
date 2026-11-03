@@ -10,6 +10,8 @@ Pintu masuk semua catatan belajar. Kembali ke [Home](../Home.md).
 - [Metode meshing](metode-meshing.md): SDF, collapse, QuadriFlow, dual contouring, template, snap, warp
 - [Ukuran kualitas mesh](ukuran-kualitas-mesh.md): dev, aspect, sliver, planes, dihedral
 - [Konsep part modular](konsep-part-modular.md): karakter = rakitan part (landmark, bentuk, topologi, konektor, cek); usulan, menunggu konfirmasi
+- [Gaya segitiga besar](gaya-segitiga-besar.md): decimate simetris dari baseline, fitur wajah dilindungi; **500 dan 350 disetujui**
+- [Triangulasi quad ke segitiga](triangulasi-quad-ke-tri.md): versi segitiga untuk game, diagonal dipilih dari SDF
 - [Pipeline AI image-to-3D](pipeline-ai-image-to-3d.md): cara kerja Tripo, Meshy, Hunyuan3D (multi-view, SDF, marching cubes, retopo, UV, bake, rig) dan bandingannya dengan cara kita
 - [Topologi wajah low-poly](topologi-wajah-lowpoly.md): kolom dan baris fitur, loop mata, loop mulut, nasolabial, pole
 
