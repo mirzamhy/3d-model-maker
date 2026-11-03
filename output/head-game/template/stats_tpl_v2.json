@@ -1,0 +1,26 @@
+{
+  "head": {
+    "vertices": 439,
+    "edges": 865,
+    "faces": 428,
+    "triangles": 874
+  },
+  "ears": {
+    "vertices": 40,
+    "edges": 108,
+    "faces": 72,
+    "triangles": 72
+  },
+  "quad_share": 0.902,
+  "closed": true,
+  "symmetry": {
+    "unmatched_vertices": 0,
+    "triangles_x_pos": 214,
+    "triangles_x_neg": 214
+  },
+  "dev_mm_mean": 0.794,
+  "dev_mm_p95": 3.659,
+  "aspect_p90": 4.49,
+  "slivers": 32,
+  "dihedral_p95": 132.2
+}
