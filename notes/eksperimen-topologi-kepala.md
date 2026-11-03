@@ -37,4 +37,4 @@ Close-up collapse vs collapse_soft:
 6. Penilaian user (2 Nov): QuadriFlow strukturnya oke tapi kurang detail; collapse detailnya bagus tapi ada segitiga tidak proporsional, cekungan, dan patahan; mulut masih kurang di semua versi.
 
 ## Langkah berikut
-Template topologi tetap untuk kepala: kolom dan baris fitur, cincin mata, cincin mulut, loop nasolabial, lalu snap ke SDF.
+Dikerjakan di [Template topologi kepala](template-topologi-kepala.md).
