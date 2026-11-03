@@ -1,0 +1,11 @@
+{
+ "head_tris_before": 914,
+ "head_tris": 220,
+ "ratio": 0.2429,
+ "ears_tris": 104,
+ "fit_mm_mean_p95": [
+  2.257,
+  6.125
+ ],
+ "has_lips_attr": true
+}

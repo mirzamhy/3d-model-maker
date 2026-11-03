@@ -1,0 +1,22 @@
+{
+ "Ears": {
+  "tris": 176,
+  "all_tris": true
+ },
+ "Eyebrow_L": {
+  "tris": 36,
+  "all_tris": true
+ },
+ "Eyebrow_R": {
+  "tris": 36,
+  "all_tris": true
+ },
+ "Head_Main": {
+  "tris": 914,
+  "all_tris": true,
+  "fit_mm_mean_p95": [
+   1.224,
+   4.135
+  ]
+ }
+}
