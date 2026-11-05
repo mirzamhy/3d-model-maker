@@ -1,0 +1,23 @@
+{
+ "character": {
+  "vertices": 2629,
+  "edges": 7429,
+  "faces": 4802,
+  "triangles": 5254
+ },
+ "dense_tris": 15740,
+ "head_tris_before": 1026,
+ "keep_verts": 529,
+ "verts_above_neck_after": 515,
+ "head_faces_before": 502,
+ "closed": true,
+ "symmetry": {
+  "unmatched_vertices": 0,
+  "triangles_x_pos": 2401,
+  "triangles_x_neg": 2401
+ },
+ "disp_mm": [
+  -25.5,
+  19.6
+ ]
+}

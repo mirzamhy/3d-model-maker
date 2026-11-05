@@ -1,0 +1,50 @@
+{
+ "character": {
+  "vertices": 987,
+  "edges": 1959,
+  "faces": 974,
+  "triangles": 1970
+ },
+ "faces_by_sides": {
+  "3": 8,
+  "5": 22,
+  "4": 940,
+  "6": 4
+ },
+ "closed": true,
+ "symmetry": {
+  "unmatched_vertices": 0,
+  "triangles_x_pos": 487,
+  "triangles_x_neg": 487
+ },
+ "head_scale": 1.009,
+ "neck_fit": {
+  "scale_x": 1.243,
+  "scale_z": 1.193,
+  "shift_z": -0.044
+ },
+ "landmarks_m": {
+  "crown": 1.78,
+  "chin": 1.483,
+  "sh_top": 1.406,
+  "armpit_y": 1.302,
+  "armpit_x": 0.165,
+  "tip": 0.813,
+  "crotch": 0.819,
+  "knee": 0.507,
+  "ankle": 0.192,
+  "wrist": 0.593
+ },
+ "trunk_rows_y": [
+  1.438,
+  1.406,
+  1.354,
+  1.302,
+  1.255,
+  1.168,
+  1.086,
+  1.003,
+  0.909,
+  0.837
+ ]
+}
