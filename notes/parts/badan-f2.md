@@ -4,7 +4,10 @@ dibuat: 2026-11-03
 part: body-f2
 versi: v1
 ---
+
 # Kartu part: badan F2 + kepala template
+
+> **Diganti (3 Nov 2026)**: topologi badan dibangun ulang jadi quad bersih di [[badan-quad]]. F2 tetap dipakai sebagai cetakan bentuk dan bobot rig.
 
 Keputusan user (3 Nov 2026): **pakai badan awal (F2) dan sambungkan dengan kepala baru**, bukan membangun torso dari nol ([torso Blender](torso.md) jadi cadangan). Ini sesuai prinsip [part modular](../konsep-part-modular.md): kembangkan yang sudah ada.
 

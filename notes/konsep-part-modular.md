@@ -80,3 +80,8 @@ notes/parts/<part>.md               kartu part: landmark, parameter, konektor, b
 - **Cara sambung: jahit kulit, tumpuk aksesori.** Kepala, leher, dan badan dijahit jadi satu mesh tertutup lewat cincin konektor. Telinga, alis, rambut, dan baju ditumpuk.
 - **Cincin leher = 10 titik**, sama dengan kepala baseline (`NECK_COLS`), sehingga kepala tidak diubah. Badan menambah titik sendiri di bawah leher.
 - **Pipeline utama: Blender (Python).** Badan F2 di Three.js hanya dipakai sebagai referensi bentuk.
+
+## Status part (3 Nov 2026)
+- Kepala template v7 + telinga v13 (disetujui) + hidung planes v2: [[parts/hidung]].
+- Badan quad v1: konektor leher 10 titik dipakai langsung (kolom badan = kolom leher); lengan dan kaki = cincin 8
+  yang tumbuh dari lubang/loop di badan: [[parts/badan-quad]]. Aksesori (baju, rambut) belum.
