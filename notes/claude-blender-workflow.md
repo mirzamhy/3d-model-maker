@@ -24,3 +24,22 @@ Bedanya dengan kita: kita membuat bentuk sendiri secara prosedural, mengukurnya,
 - Link antar-note (`[teks](file.md)`) dan graph view memperlihatkan hubungan konsep, eksperimen, dan referensi.
 - Gambar render dan referensi ditempel langsung di note (`notes/attachments/`).
 - Semua file markdown biasa, jadi Claude bisa membaca dan menulisnya tanpa plugin.
+
+## Jebakan teknis yang pernah kena (jangan diulang)
+- **Path Windows di heredoc/sed/Python**: `\f` di `head-game\f2` jadi karakter form feed, path rusak diam-diam.
+  Pakai garis miring `/` di path, atau Edit tool, bukan sed dengan backslash.
+- **Urutan baris piksel Blender** (`image.pixels`) mulai dari **bawah**. Lembar banding yang disusun dari array:
+  baris pertama array = baris paling bawah gambar. Sempat salah bilang "atas = baseline" ke user.
+  Cek dengan angka (ukur titik), jangan tebak dari gambar.
+- **Warna per-face tidak ikut glTF**: atribut warna domain FACE cuma ada di `mesh.attributes`, exporter cuma baca
+  POINT/CORNER. Salin ke CORNER dulu (lihat [Uji gerak di browser](uji-gerak-viewer.md)).
+- **Browser pane tersembunyi**: requestAnimationFrame berhenti, canvas WebGL kosong di screenshot. Cek data lewat
+  JavaScript (`window.gerak`) atau render di Blender.
+- **Tulang helper F2 di Blender**: rotasi sendi J diambil di frame rest yang dibawa induk
+  (`child = P * J * rest`, jadi `J = P^-1 * C`); helper dapat `P * slerp(I, J, 0.5) * rest`. Rest helper beda arah
+  dengan tulang anaknya, jadi jangan setengahkan quaternion lokal mentah-mentah (`pose_test.py: drive_helpers`).
+- **Blender bmesh**: `bm.verts[i]` basi setelah vertex baru ditambah; simpan list vertex lama dulu.
+- **BMVert di set Python**: setelah op bmesh pada mesh yang punya layer int, `v in set_of_bmverts` bisa salah diam-diam.
+  Pakai koordinat atau index yang di-refresh. Buat layer custom sebelum menyimpan referensi vertex.
+- **Menjahit ke loop kepala**: cek dulu loop-nya bersih (jumlah vertex = kolom badan, tiap pasangan tetangga
+  punya edge langsung). Loop dengan vertex sisipan menghasilkan lubang + edge non-manifold.
