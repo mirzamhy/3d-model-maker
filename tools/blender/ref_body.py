@@ -52,6 +52,16 @@ KNEE_RINGS = [float(d) for d in os.environ.get("RB_KNEE", "0.05,0,-0.05").split(
 KNEE_PINCH = float(os.environ.get("RB_KNEE_PINCH", "0"))  # 0..1: how far the knee rings close in at the back. Tested 0.6 / 0.75: worse than 0 (the rig fixes the knee in weights)
 ARMPIT_FOLD = float(os.environ.get("RB_ARMPIT_FOLD", "0"))  # 0..1: arm root front pulled to the chest front plane
 NECK_ANCHOR = os.environ.get("RB_NECK_ANCHOR", "1") == "1"  # trunk depth across the arm band ends at the neck base (v12)
+HEAD_WARP = os.environ.get("RB_HEAD_WARP", "0") == "1"  # head width per height onto the reference (chin..brow)
+HEAD_WARP_TOP = 0.04  # template units above eye level (brow)
+HEAD_WARP_MAX = 0.15
+# trapezoid jaw (template coords, eye level 0): the side of the face runs straight from the cheekbone to the chin
+JAW_TAPER = os.environ.get("RB_JAW", "0") == "1"  # for head_masc_v1 only (head_planes has its own jaw)
+JAW_TOP = float(os.environ.get("RB_JAW_TOP", "-0.02"))  # taper starts under the cheekbone
+JAW_CHIN_Y = -0.115  # chin bottom corners
+JAW_CHIN = float(os.environ.get("RB_JAW_CHIN", "0.034"))  # chin half width at JAW_CHIN_Y (cheek ~0.072)
+JAW_CORE = 0.02  # |x| under this (mouth, chin centre) is not moved
+JAW_LOOP_Y = -0.132  # neck loop: factor back to 1 here
 JOINTS = {}  # left-side joint centres for the rig (tools/blender/rig_game.py), Blender coords
 
 
@@ -446,7 +456,8 @@ def build(sil, L, head_ring):
 
 def place_head(L):
     """Scale + move the template head (eye level 0, chin ~ -0.12) onto the reference head."""
-    head = bpy.data.objects["Head_Main"]
+    # head_planes templates: a closed "Head" + the neck stick "Head_Main" (measure the head, not the stick)
+    head = bpy.data.objects.get("Head") or bpy.data.objects["Head_Main"]
     co = np.array([v.co[:] for v in head.data.vertices])
     hd = np.stack([co[:, 0], co[:, 2], -co[:, 1]], 1)
     top_t = hd[:, 1].max()
@@ -464,6 +475,68 @@ def place_head(L):
     for ob in [o for o in bpy.data.objects if o.type == "MESH"]:
         ob.data.transform(M)
     return s, y0
+
+
+def warp_head_width(sil, L, y0, s):
+    """Width per height from the chin to the brow onto the reference front silhouette (head + ears + brows together).
+    The template's face is a box under the cheeks where the reference narrows to a V: the cheekbones were 1-2 cm
+    narrow and the chin wide. Factor per 1 cm row, smoothed, clamped, faded to 1 at both ends."""
+    obs = [o for o in bpy.data.objects if o.type == "MESH"]
+    co = np.concatenate([np.array([v.co[:] for v in o.data.vertices]) for o in obs])
+    z_lo, z_hi = L["chin"] - CHIN_DROP, y0 + HEAD_WARP_TOP * s  # template eye level = 0
+    zs = np.arange(z_lo, z_hi + 1e-6, 0.01)
+    f = []
+    for z in zs:
+        sl = co[np.abs(co[:, 2] - z) < 0.005]
+        cur = float(np.abs(sl[:, 0]).max()) if len(sl) else 0.0
+        a, b = sil.front_run(z)
+        f.append(np.clip(((b - a) / 2) / cur, 1 - HEAD_WARP_MAX, 1 + HEAD_WARP_MAX) if cur > 0.02 else 1.0)
+    f = np.convolve(np.pad(f, 1, mode="edge"), [0.25, 0.5, 0.25], mode="valid")
+    f[0] = f[-1] = 1.0  # fade at both ends
+    for o in obs:
+        for v in o.data.vertices:
+            if z_lo <= v.co.z <= z_hi:
+                v.co.x *= float(np.interp(v.co.z, zs, f))
+    return {"z": [round(float(z), 3) for z in zs], "factor": [round(float(x), 3) for x in f]}
+
+
+def jaw_taper():
+    """Template jaw is a box (half width 66 mm under the mouth vs 72 mm at the cheekbone). Make the front view a
+    trapezoid: per height, the face's outer half width goes onto a straight line from the cheekbone (JAW_TOP) to the
+    chin corners (JAW_CHIN). Only the part beyond JAW_CORE is squeezed (mouth and chin centre keep their size);
+    never widened. Under the chin the squeeze fades out by the neck loop. Template coords, before place_head."""
+    obs = [o for o in bpy.data.objects if o.type == "MESH"]
+    head = bpy.data.objects["Head_Main"]
+    co = np.array([v.co[:] for v in head.data.vertices])
+    width = lambda y: float(np.abs(co[np.abs(co[:, 2] - y) < 0.008][:, 0]).max())
+    w_top = width(JAW_TOP)
+    ys = np.arange(JAW_LOOP_Y, JAW_TOP + 1e-6, 0.005)
+    g = []
+    for y in ys:
+        if y >= JAW_CHIN_Y:
+            t = w_top + (JAW_CHIN - w_top) * (JAW_TOP - y) / (JAW_TOP - JAW_CHIN_Y)
+        else:  # under the chin: same squeeze as the chin row, fading to none at the loop
+            t = None
+        g.append(t)
+    gc = []
+    for y, t in zip(ys, g):
+        cur = width(y)
+        if t is None:
+            gc.append(None)
+        else:
+            gc.append(min(1.0, (t - JAW_CORE) / max(cur - JAW_CORE, 1e-4)))
+    g_chin = next(v for y, v in zip(ys, gc) if v is not None)
+    gf = [v if v is not None else 1 + (g_chin - 1) * (y - JAW_LOOP_Y) / (JAW_CHIN_Y - JAW_LOOP_Y)
+          for y, v in zip(ys, gc)]
+    gf = np.convolve(np.pad(gf, 1, mode="edge"), [0.25, 0.5, 0.25], mode="valid")
+    gf[-1] = 1.0
+    gf[0] = 1.0
+    for o in obs:
+        for v in o.data.vertices:
+            if ys[0] <= v.co.z <= ys[-1] and abs(v.co.x) > JAW_CORE:
+                k = float(np.interp(v.co.z, ys, gf))
+                v.co.x = math.copysign(JAW_CORE + (abs(v.co.x) - JAW_CORE) * k, v.co.x)
+    return {"y": [round(float(y), 3) for y in ys], "squeeze": [round(float(x), 3) for x in gf]}
 
 
 def cut_neck_tube(head):
@@ -560,7 +633,6 @@ HEAD_DZ = float(os.environ.get("RB_HEAD_DZ", "-0.015"))  # head moved back (refe
 NECK_FADE_BACK = 0.11  # fade height above the ring at the back of the neck (skull base)
 NECK_FADE_THROAT = 0.07  # ... at the throat (front of the ring); the chin (further forward) is not moved
 
-
 PART = {"head": 0, "trunk": 1, "neck": 2, "arm": 3, "hand": 4, "finger": 5, "thumb": 6, "leg": 7, "crotch": 8}
 
 
@@ -588,7 +660,11 @@ def main():
     head = bpy.data.objects["Head_Main"]
     F.remove_neck_cap(head)
     raw = cut_neck_tube(head)  # template coords: the tube goes, the loop under the jaw stays
+    if JAW_TAPER:
+        NECK_DEBUG["jaw_taper"] = jaw_taper()
     s, y0 = place_head(L)
+    if HEAD_WARP:
+        NECK_DEBUG["head_warp"] = warp_head_width(sil, L, y0, s)
     neck_fit = fit_top_ring(head, sil, [i for (c, i) in raw], L["chin"])
     vidx = {}
     left = {}

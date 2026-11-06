@@ -19,7 +19,7 @@ import numpy as np
 from mathutils import Vector
 
 FINGER_NAMES = ["pinky", "ring", "middle", "index"]  # joints json: finger0 = little ... finger3 = index
-RIGID_HEAD = ("Hair", "Ears", "Eyebrow_L", "Eyebrow_R")
+RIGID_HEAD = ("Head", "Hair", "Ears", "Eyebrow_L", "Eyebrow_R")  # Head: head_planes closed head (neck = stick in the body)
 # bone radius as a share of the stature: the distance score is distance / radius, so the wide torso wins its own
 # side verts against the arm root next to them
 # Bones of one limb share a radius: different radii move the 50/50 line off the joint toward the thinner bone

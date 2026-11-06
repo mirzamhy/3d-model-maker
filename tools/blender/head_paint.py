@@ -23,6 +23,8 @@ LIP = (0.66, 0.36, 0.33)
 MOUTH = (0.22, 0.10, 0.09)  # inside the mouth line
 NECK = (0.74, 0.53, 0.41)
 BROW = (0.16, 0.10, 0.06)
+MOUTH_BAND = (0.30, 0.15, 0.13)  # head_planes: recessed mouth band
+LIP_LOW = (0.70, 0.45, 0.39)  # head_planes: lower lip
 # ear zones (attribute ear_zone): 0 back, 1 helix rim, 2 antihelix, 3 concha bowl, 4 ear canal
 EAR_ZONE = {0: (0.80, 0.55, 0.43), 1: (0.86, 0.57, 0.45), 2: (0.82, 0.56, 0.44), 3: (0.70, 0.44, 0.36),
             4: (0.36, 0.20, 0.17)}
@@ -66,11 +68,14 @@ def jitter(col, rnd, amt=0.035):
 
 def face_colours(ob, rnd, fixed=None):
     me = ob.data
-    attr = me.color_attributes.get("Col") or me.color_attributes.new("Col", "FLOAT_COLOR", "FACE")
+    attr = me.attributes.get("Col") or me.color_attributes.new("Col", "FLOAT_COLOR", "FACE")  # face-domain colours are not in color_attributes
     lips = me.attributes.get("lips")
     ez = me.attributes.get("ear_zone")
+    zone = me.attributes.get("zone")  # head_planes.py: 1 eye socket, 2 mouth, 3 lower lip
     for p in me.polygons:
-        if ez:
+        if zone and zone.data[p.index].value:
+            base = {1: SOCKET, 2: MOUTH_BAND, 3: LIP_LOW}[zone.data[p.index].value]
+        elif ez:
             base = EAR_ZONE[ez.data[p.index].value]
         elif fixed:
             base = fixed
@@ -165,7 +170,8 @@ def main():
     mat = colour_material()
     for ob in [o for o in bpy.data.objects if o.type == "MESH"]:
         fixed = BROW if ob.name.startswith("Eyebrow") else WARM if ob.name.startswith("Ear") else None
-        face_colours(ob, rnd, fixed)
+        if not ob.get("paint_keep"):  # e.g. head_planes hair: already coloured
+            face_colours(ob, rnd, fixed)
         ob.data.materials.clear()
         ob.data.materials.append(mat)
         for p in ob.data.polygons:
