@@ -1,6 +1,17 @@
 # Uji gerak di browser (viewer gerak)
 
 Halaman `viewer/gerak.html` (dev server `npm run dev`, buka `http://localhost:5195/viewer/gerak.html`).
+Pasangan karakter lewat `?pair=`: `survivor` (default: F2 + kepala vs survivor v11 rig game) atau `f2` (lama vs baru).
+
+## Survivor v11 (6 Nov 2026)
+Rig game dari [[parts/rig]] (`output/qa/survivor_v11_rig.glb`). Nama tulang Rigify (`upper_arm.L`) dipetakan ke nama
+Mixamo viewer (`LeftArm`) saat load (`ALIAS`; loader glTF membuang titik: `upper_armL`). Semua gerak jalan tanpa ubah
+pose. Tambahan: gerak **Kepal** (jari 3 ruas + jempol), jari mengepal saat lari, kamera close-up yang mengikuti tulang
+(lutut, siku, tangan), dan `gerak.freeze('squat', 0.5)` di konsol untuk membekukan satu fase.
+Hasil: jongkok (lutut 125°) dan lari mulus di lutut, kepalan rapi, tengok 60° bersih. Survivor tanpa tulang helper
+tetap setara F2 yang pakai helper.
+![[gerak_survivor_lari.jpg]]
+
 Badan lama (F2 asli) dan baru (F2 + kepala template) berdiri berdampingan, gerak sama persis:
 T-pose, diam, jalan, lari, jongkok, lompat, lambai, zombie, tengok. Ada wireframe, tulang, kecepatan, kamera.
 

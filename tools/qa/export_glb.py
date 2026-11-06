@@ -88,7 +88,9 @@ def round_trip(path, anim=False):
     skinned = bool(gl.get("skins"))
     bpy.ops.wm.read_factory_settings(use_empty=True)
     bpy.ops.import_scene.gltf(filepath=path)
-    got = sum(len(ob.data.polygons) for ob in bpy.data.objects if ob.type == "MESH")
+    # the importer adds a bone display shape (icosphere, 80 faces) for skinned files: not part of the model
+    shapes = {pb.custom_shape for ob in bpy.data.objects if ob.type == "ARMATURE" for pb in ob.pose.bones if pb.custom_shape}
+    got = sum(len(ob.data.polygons) for ob in bpy.data.objects if ob.type == "MESH" and ob not in shapes)
     ok = got == want and (colours or n_col == 0) and (skinned or not has_arm)
     return {"ok": ok, "path": path, "bytes": size, "triangles_expected": want, "triangles_glb": got,
             "colour_layers_made": n_col, "colours_in_glb": colours, "armature_expected": has_arm, "skinned_in_glb": skinned,

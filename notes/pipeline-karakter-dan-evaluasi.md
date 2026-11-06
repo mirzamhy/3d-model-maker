@@ -108,6 +108,7 @@ Selalu disandingkan dengan versi sebelumnya dan referensi. Tidak menilai dari sa
 
 ### E4. Uji deformasi
 Di pose uji: tidak ada face terlipat, volume sendi tidak kolaps (siku/lutut ≥ 70 % tebal asli), baju tidak tembus.
+Alat: `tools/qa/deform_test.py` (8 pose, face terbalik, face kolaps, volume sendi, gambar per pose).
 
 ### E5. Penilaian user (gerbang akhir tiap tahap)
 - User nilai dengan skala sederhana per part: **ok / hampir / ulang**, plus sketsa coretan kalau perlu.
@@ -138,7 +139,7 @@ Tiap latihan menghasilkan: note proyek, kartu part, skor E1–E5, dan daftar pel
 
 ## Alat (sudah dibuat 4 Nov 2026)
 `tools/qa/`: `eval_model.py` (E1), `silhouette_iou.py` (E2), `sheet.py` (E3), `export_glb.py`, dan `qa.ps1` untuk
-menjalankan semuanya. Cara pakai dan hasil uji pertama: [Alat QA](alat-qa.md). E4 menunggu rig.
+menjalankan semuanya. Cara pakai dan hasil uji pertama: [Alat QA](alat-qa.md). E4: `tools/qa/deform_test.py`, uji pertama di [Rig game](parts/rig.md).
 
 ## Template brief
 ```

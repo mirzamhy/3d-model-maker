@@ -8,7 +8,7 @@ Pintu masuk semua catatan belajar. Kembali ke [Home](../Home.md).
 
 ## Konsep
 - [Pipeline karakter dan evaluasi](pipeline-karakter-dan-evaluasi.md): 9 tahap brief sampai ekspor, gerbang E1–E5, jalur alat, rencana latihan (**rencana utama**)
-- [Alat QA](alat-qa.md): `tools/qa/` eval E1, IoU siluet E2, sheet E3, ekspor glb; uji pertama survivor v5base
+- [Alat QA](alat-qa.md): `tools/qa/` eval E1, IoU siluet E2, sheet E3, ekspor glb, deformasi E4; survivor v5base sampai v12 (punggung/dada atas)
 - [Metode meshing](metode-meshing.md): SDF, collapse, QuadriFlow, dual contouring, template, snap, warp
 - [Ukuran kualitas mesh](ukuran-kualitas-mesh.md): dev, aspect, sliver, planes, dihedral
 - [Konsep part modular](konsep-part-modular.md): karakter = rakitan part (landmark, bentuk, topologi, konektor, cek); usulan, menunggu konfirmasi
@@ -31,6 +31,8 @@ Pintu masuk semua catatan belajar. Kembali ke [Home](../Home.md).
 - [Hidung (nose)](parts/hidung.md): bidang datar Asaro (depan, samping, bawah); v2 tidak mancung, menunggu penilaian
 - [Uji gerak di browser](uji-gerak-viewer.md): lama vs baru berdampingan, jalan/jongkok/lompat/zombie; rumus rotasi sumbu dunia
 - [Torso](parts/torso.md): torso Blender v2 (cadangan, diganti badan F2)
+- [Tangan (jari)](parts/tangan.md): telapak 10 titik, 4 jari 3 ruas + jempol dari face buku jari (cara Rozi); v11 survivor **disetujui**
+- [Rig game](parts/rig.md): 52 tulang deform dari posisi sendi ref_body, bobot cincin (bukan bone heat), uji E4 8 pose; batas siku 110°, lutut 130° (bobot engsel)
 - [Telinga (ear)](parts/ear.md): gaya setengah hati dari referensi user; v13 **disetujui** (trace titik per titik dari gambar user, n-gon utuh)
 
 ## Referensi
