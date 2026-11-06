@@ -2,15 +2,15 @@
 tags: [part, kepala, rambut, kartu-part, gaya]
 dibuat: 2026-11-06
 part: kepala
-versi: v16c
+versi: v16d
 ---
-# Kartu part: kepala bidang besar (survivor v16c)
+# Kartu part: kepala bidang besar (survivor v16d)
 
 Pengganti kepala `head_masc_v1` (sculpt → banyak face kecil, rambut duri). Gaya dari GIF referensi user:
 ![](../attachments/ref/lowpoly_head_ref.gif)
 
-Kode: `tools/blender/head_planes.py` → `output/head-game/template/head_lp_v3.blend` (kepala 156 face + leher tusuk).
-Rantai: `head_planes.py` → `ref_body.py` (RB_HEAD=head_lp_v3; v16b: v2, v16a: v1) → `head_paint.py` → rig → baju. Langkah `hair_lowpoly.py` tidak dipakai (rambut sudah ada di template).
+Kode: `tools/blender/head_planes.py` → `output/head-game/template/head_lp_v4.blend` (kepala 156 face + leher tusuk).
+Rantai: `head_planes.py` → `ref_body.py` (RB_HEAD=head_lp_v4; v16c: v3, v16b: v2, v16a: v1) → `head_paint.py` → rig → baju. Langkah `hair_lowpoly.py` tidak dipakai (rambut sudah ada di template).
 
 ![](../attachments/qa/turn_v13_v16a.gif)
 Kiri referensi, tengah v13, kanan v16a. Diam: `turn_v13_v16a_still.png`.
@@ -46,6 +46,15 @@ Kepala sudah objek sendiri, jadi kolomnya tidak terikat 10 kolom leher lagi: `HC
 
 ![](../attachments/qa/turn_v16b_v16c.gif)
 
+## v16d: rambut menutup sisi dan belakang
+Dibanding GIF: rambut v16c berhenti di atas telinga, kulit terlihat di belakang telinga dan tengkuk.
+- Garis rambut per kolom diturunkan: sisi (90) −0.020 (menutup atas telinga), belakang 120 / 180 ke −0.050 / −0.060 (dasar tengkorak).
+- `TEETH` (pengganti `FRINGE`): titik rambut di segmen tepi mana saja, dengan posisi di sepanjang segmen. Ujungnya diproyeksikan ke kulit (tidak melayang). Poni seperti dulu, **cambang** (48 → 90, posisi 0.8, turun 27 mm, di depan telinga), **tengkuk** (120 → 180, turun 10 mm).
+- Tebal tambahan kolom belakang (`HAIR_BACK`, 12 mm di baris tengah): tonjolan di atas dasar tengkorak.
+- Hasil: E1 50/50 (sliver 0.0174, sekarang lolos), E4 sama (siku 120° saja), 2936 tris, glb 344 KB. IoU kepala depan 0.838 → 0.848, samping 0.838 → 0.847.
+
+![](../attachments/qa/turn_v16c_v16d.gif)
+
 ## Hasil v16a (kepala + leher satu loft)
 | | v13 | v16a |
 |---|---|---|
@@ -66,4 +75,4 @@ IoU samping turun: lembar survivor punya rambut jabrik tinggi, kepala baru ikut 
 - Turntable 30 frame (12° per frame) di samping GIF referensi jauh lebih jelas daripada 3 sudut.
 
 ## Berikutnya
-- Penilaian user. Kalau oke: rambut lebih banyak potongan (ref: jambul belakang, sideburn), telinga lebih bentuk.
+- Penilaian user. Telinga lebih bentuk (sekarang lempeng); poni lebih tajam seperti GIF.

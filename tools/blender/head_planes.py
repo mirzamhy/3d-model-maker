@@ -46,14 +46,23 @@ NECK = dict(a=0.036, front=0.042, back=0.040)  # neck stick: ellipse around z = 
 NECK_Y = [-0.050, -0.132, -0.152, -0.172]  # top cap (inside the head), loop (kept by ref_body), tube, capped ring (cut off by ref_body)
 
 # hair helmet: per column the hairline height, thickness at the crown / at the rim
-HAIRLINE = {0: 0.066, 10: 0.065, 22: 0.062, 48: 0.046, 90: 0.014, 120: -0.030, 180: -0.055}
+HAIRLINE = {0: 0.066, 10: 0.065, 22: 0.060, 48: 0.040, 90: -0.020, 120: -0.050, 180: -0.060}  # sides cover the ear top, back down to the skull base
 HAIR_TOP, HAIR_IN = 0.032, 0.002
 HAIR_TH = [0.032, 0.026, 0.015, 0.005]  # thickness per hair row (crown -> rim): volume on top, close at the rim
 HAIR_FRONT = [0.004, 0.006, 0.002, 0.0]  # extra at the front columns (0, 22): a raised front, not a bowl
+HAIR_BACK = [0.002, 0.012, 0.012, 0.004]  # extra at the back columns (120, 180): the bulge over the skull base
 HAIR_ROWS = 4
-# fringe points: (left col, right col) of a front rim segment -> drop (m) and sideways lean (+x)
-FRINGE = {(-10, 0): (0.016, -0.010), (0, 10): (0.012, -0.012), (10, 22): (0.010, -0.008), (22, 48): (0.008, -0.004),
-          (-22, -10): (0.016, -0.008), (-48, -22): (0.012, -0.008)}
+# hair points on the rim: (from col, to col) of a rim segment -> drop below the rim (m), sideways lean (+x), position
+# along the segment (0 = from col, 1 = to col). Tips lie on the skin (projected), not in the air.
+TEETH = {
+    # fringe: falls to the character's right
+    (-10, 0): (0.016, -0.010, 0.5), (0, 10): (0.012, -0.012, 0.5), (10, 22): (0.010, -0.008, 0.5),
+    (22, 48): (0.008, -0.004, 0.5), (-22, -10): (0.016, -0.008, 0.5), (-48, -22): (0.012, -0.008, 0.5),
+    # sideburns: a point down in front of the ear
+    (48, 90): (0.027, 0.0, 0.8), (-48, -90): (0.027, 0.0, 0.8),
+    # nape: the back panel ends in points at the neck
+    (120, 180): (0.010, 0.0, 0.8), (-120, 180): (0.010, 0.0, 0.8),
+}
 SKIN = (0.80, 0.58, 0.45)
 SOCKET = (0.60, 0.42, 0.34)
 HAIR_COL = (0.27, 0.18, 0.11)
@@ -206,7 +215,7 @@ def hair(rings):
             line = HAIRLINE[abs(ang[k])]
             y = y_top + (line - y_top) * t
             p = surface(rings, k, y)
-            th = HAIR_TH[r] + (HAIR_FRONT[r] if abs(ang[k]) <= 22 else 0.0)
+            th = HAIR_TH[r] + (HAIR_FRONT[r] if abs(ang[k]) <= 22 else HAIR_BACK[r] if abs(ang[k]) >= 120 else 0.0)
             o_row.append(out_pt(p, th))
             i_row.append(out_pt(p, -HAIR_IN))
         outer.append(o_row)
@@ -236,13 +245,18 @@ def hair(rings):
             faces.append([idx[("o", r, k)], idx[("o", r + 1, k)], idx[("o", r + 1, k2)], idx[("o", r, k2)]])
             faces.append([idx[("i", r, k)], idx[("i", r, k2)], idx[("i", r + 1, k2)], idx[("i", r + 1, k)]])
         b = HAIR_ROWS - 1
-        tip = FRINGE.get((ang[k2], ang[k])) or FRINGE.get((ang[k], ang[k2]))
+        tip = TEETH.get((ang[k], ang[k2]))
+        if tip is None and (ang[k2], ang[k]) in TEETH:
+            d_, l_, t_ = TEETH[(ang[k2], ang[k])]
+            tip = (d_, l_, 1 - t_)
         if tip:
-            drop, lean = tip
-            ma = [(outer[b][k][j] + outer[b][k2][j]) / 2 for j in range(3)]
-            mi = [(inner[b][k][j] + inner[b][k2][j]) / 2 for j in range(3)]
-            to = v(("to", k), (ma[0] + lean, ma[1] - drop, ma[2] + 0.002))
-            ti = v(("ti", k), (mi[0] + lean, mi[1] - drop, mi[2] + 0.002))
+            drop, lean, t = tip
+            y_tip = (1 - t) * HAIRLINE[abs(ang[k])] + t * HAIRLINE[abs(ang[k2])] - drop
+            pa, pb = surface(rings, k, y_tip), surface(rings, k2, y_tip)
+            ps = tuple((1 - t) * pa[j] + t * pb[j] for j in range(3))
+            po, pi = out_pt(ps, 0.004), out_pt(ps, -HAIR_IN)
+            to = v(("to", k), (po[0] + lean, po[1], po[2]))
+            ti = v(("ti", k), (pi[0] + lean, pi[1], pi[2]))
             faces.append([idx[("o", b, k)], to, idx[("o", b, k2)]])
             faces.append([idx[("i", b, k2)], ti, idx[("i", b, k)]])
             faces.append([idx[("o", b, k)], idx[("i", b, k)], ti, to])
