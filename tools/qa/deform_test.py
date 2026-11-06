@@ -4,6 +4,8 @@
 # Per pose:
 #   flipped faces: posed face normal points away (> 90 deg) from the rest normal turned by the face's own bones
 #   collapsed faces: posed area < 25 % of the rest area
+#   cloth poke-through: garments made by tools/blender/clothes.py keep "src" (body vertex); a garment vertex whose
+#     posed gap to its body vertex along the posed body normal is < 0 has skin poking through
 #   joint volume: verts in the joint's slab at rest, mean distance to the joint centre posed / rest (elbow, knee,
 #     wrist, shoulder, hip); the gate wants >= 0.7 (pipeline E4)
 # Output: output/qa/<tag>_deform.json and <tag>_deform.png (one row per pose: front, 3/4, close-up of the joint).
@@ -175,6 +177,33 @@ def joint_slabs(rig, rest):
     return out
 
 
+def cloth_gaps(body):
+    """{garment: (count of verts with skin through, smallest gap mm)} for the current pose."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    ev = body.evaluated_get(dg)
+    me = ev.to_mesh()
+    R = body.matrix_world.to_3x3()
+    bco = np.array([body.matrix_world @ v.co for v in me.vertices])
+    bn = np.array([(R @ v.normal).normalized() for v in me.vertices])
+    ev.to_mesh_clear()
+    out = {}
+    for ob in Q.meshes():
+        a = ob.data.attributes.get("src")
+        if ob is body or a is None:
+            continue
+        src = np.array([d.value for d in a.data])
+        e = ob.evaluated_get(dg)
+        gm = e.to_mesh()
+        gco = np.array([ob.matrix_world @ v.co for v in gm.vertices])
+        e.to_mesh_clear()
+        ok = src >= 0  # -1: skin under it was removed (clothes.py), nothing can poke through
+        gap = ((gco[ok] - bco[src[ok]]) * bn[src[ok]]).sum(1)
+        if not len(gap):
+            continue
+        out[ob.name] = (int((gap < 0).sum()), round(float(gap.min()) * 1000, 1))
+    return out
+
+
 def mark_bad(body, bad):
     """Red corner colour on flipped / collapsed faces for the picture."""
     me = body.data
@@ -227,18 +256,35 @@ def main():
     lay = body.data.color_attributes.get("Color")
     if lay is not None:
         base_col = [c.color[:] for c in lay.data]
+    # garments (clothes.py, "src" attribute): own flipped / collapsed faces with their own weights
+    cloth = []
+    for ob in Q.meshes():
+        if ob is not body and ob.data.attributes.get("src") is not None:
+            f_ = [list(p.vertices) for p in ob.data.polygons]
+            r_ = posed_coords(ob)
+            cn, ca = face_data(r_, f_)
+            cloth.append((ob, r_, f_, cn, ca, weights(ob)))
     tmp = tempfile.mkdtemp(prefix="qa_deform_")
     res, rows = {}, []
     for pose, ops in POSES.items():
         set_pose(rig, ops)
         m, co, bad = measure(rig, body, rest, faces, n0, a0, W, slabs)
+        for ob, r_, f_, cn, ca, w_ in cloth:
+            mc, _, _ = measure(rig, ob, r_, f_, cn, ca, w_, {})
+            m["flipped_faces"] += mc["flipped_faces"]
+            m["collapsed_faces"] += mc["collapsed_faces"]
+            m.setdefault("cloth_flipped", {})[ob.name] = mc["flipped_faces"]
+        cg = cloth_gaps(body)
+        if cg:
+            m["cloth_poke"] = {k: v[0] for k, v in cg.items()}
+            m["cloth_min_gap_mm"] = {k: v[1] for k, v in cg.items()}
         res[pose] = m
         if base_col is not None:
             for i, c in enumerate(base_col):
                 lay.data[i].color = c
         mark_bad(body, bad)
         rows.append(shots(rig, body, pose, a.size, tmp, co))
-        print(f"QA_POSE {pose}: flipped {m['flipped_faces']} collapsed {m['collapsed_faces']} volume {m['joint_volume']}")
+        print(f"QA_POSE {pose}: flipped {m['flipped_faces']} collapsed {m['collapsed_faces']} cloth {m.get('cloth_min_gap_mm', '-')} volume {m['joint_volume']}")
     set_pose(rig, [])
     worst = {}
     for m in res.values():
@@ -249,6 +295,10 @@ def main():
              ("no collapsed faces", sum(m["collapsed_faces"] for m in res.values()) == 0,
               {p: m["collapsed_faces"] for p, m in res.items() if m["collapsed_faces"]}, "0"),
              ("joint volume", min(worst.values()) >= a.min_volume, worst, f">= {a.min_volume}")]
+    if any("cloth_poke" in m for m in res.values()):
+        poke = {p: {k: v for k, v in m["cloth_poke"].items() if v} for p, m in res.items() if "cloth_poke" in m}
+        poke = {p: v for p, v in poke.items() if v}
+        gates.append(("cloth: no skin through", not poke, poke, "0"))
     out = {"poses": res, "worst_joint_volume": worst,
            "gates": [{"gate": g, "result": "PASS" if ok else "FAIL", "value": v, "need": n} for g, ok, v, n in gates]}
     out["passed"] = all(ok for _, ok, _, _ in gates)

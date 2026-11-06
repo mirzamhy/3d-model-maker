@@ -108,7 +108,7 @@ Selalu disandingkan dengan versi sebelumnya dan referensi. Tidak menilai dari sa
 
 ### E4. Uji deformasi
 Di pose uji: tidak ada face terlipat, volume sendi tidak kolaps (siku/lutut ≥ 70 % tebal asli), baju tidak tembus.
-Alat: `tools/qa/deform_test.py` (8 pose, face terbalik, face kolaps, volume sendi, gambar per pose).
+Alat: `tools/qa/deform_test.py` (8 pose, face terbalik, face kolaps, volume sendi, kulit tembus baju, gambar per pose).
 
 ### E5. Penilaian user (gerbang akhir tiap tahap)
 - User nilai dengan skala sederhana per part: **ok / hampir / ulang**, plus sketsa coretan kalau perlu.

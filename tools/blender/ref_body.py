@@ -561,6 +561,26 @@ NECK_FADE_BACK = 0.11  # fade height above the ring at the back of the neck (sku
 NECK_FADE_THROAT = 0.07  # ... at the throat (front of the ring); the chin (further forward) is not moved
 
 
+PART = {"head": 0, "trunk": 1, "neck": 2, "arm": 3, "hand": 4, "finger": 5, "thumb": 6, "leg": 7, "crotch": 8}
+
+
+def face_label(f):
+    """(part code, ring) of a face from its vertex keys (side, kind, index, sub)."""
+    kinds = []
+    for k in f:
+        kind = k[1]
+        if kind == "t" and k[0] == "L" and k[3] in (0, 1, 2, 3) and len(k) == 4 and k[3] not in COLS[1:]:
+            kind = "thumb"  # thumb keys ("L", "t", segment, corner) share the trunk letter
+        kinds.append((kind, k[2]))
+    names = {"t": "trunk", "n": "neck", "a": "arm", "h": "hand", "f": "finger", "thumb": "thumb", "l": "leg", "ci": "crotch"}
+    order = ["thumb", "f", "h", "a", "l", "ci", "n", "t"]  # most specific kind wins (arm root ring = trunk keys)
+    kind = next(o for o in order if any(kd == o for kd, _ in kinds))
+    ring = min(i for kd, i in kinds if kd == kind)
+    if kind in ("a", "l") and any(kd in ("t", "ci") for kd, _ in kinds):
+        ring = 0  # first band: its root ring is made of trunk / crotch keys -> band 0 (band i = ring i -> i + 1)
+    return PART[names[kind]], int(ring)
+
+
 def main():
     sil = Sil()
     L = landmarks(sil)
@@ -603,10 +623,16 @@ def main():
         return v
 
     mirror = lambda k: ("R",) + k[1:] if k[0] == "L" else k
+    # face labels for later parts (clothes): "part" (PART codes) and "ring" (trunk row, arm / leg ring index;
+    # the smallest of the face's corners). Template head faces keep 0.
+    l_part = bm.faces.layers.int.new("part")
+    l_ring = bm.faces.layers.int.new("ring")
     for f in faces:
-        bm.faces.new([vert(k) for k in f])
-        if any(k[0] == "L" for k in f):
-            bm.faces.new([vert(mirror(k)) for k in f][::-1])
+        part, ring = face_label(f)
+        for ff in [bm.faces.new([vert(k) for k in f])] + (
+                [bm.faces.new([vert(mirror(k)) for k in f][::-1])] if any(k[0] == "L" for k in f) else []):
+            ff[l_part] = part
+            ff[l_ring] = ring
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     # "pin": kept as built by ref_detail (no subdivision, no muscles, no decimation): head, neck, foot
     for v in head_v:

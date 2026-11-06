@@ -17,7 +17,7 @@ const PAIRS: Record<string, [Char, Char]> = {
   f2: [{ file: '/output/head-game/f2/f2_old.glb', label: 'Lama', sub: 'F2 asli, kepala F2' },
     { file: '/output/head-game/f2/f2_new.glb', label: 'Baru', sub: 'badan quad + kepala template' }],
   survivor: [{ file: '/output/head-game/f2/f2_new.glb', label: 'F2 + kepala', sub: 'rig F2 73 tulang + helper' },
-    { file: '/output/qa/survivor_v12_rig.glb', label: 'Survivor v12', sub: 'rig game 52 tulang, bobot cincin' }],
+    { file: '/output/qa/survivor_v13_dressed.glb', label: 'Survivor v13', sub: 'baju: kaos, cargo, bot' }],
 };
 const PAIR = PAIRS[new URLSearchParams(location.search).get('pair') ?? 'survivor'] ?? PAIRS.survivor;
 // rig_game.py bone names (glTF loader drops the '.': upper_arm.L -> upper_armL) -> the Mixamo names used here

@@ -30,8 +30,8 @@ def opts(p):
     p.add_argument("--export", action="store_true")
 
 
-def topology(me):
-    """Counts on one world-space mesh."""
+def topology(me, wall=0.0):
+    """Counts on one world-space mesh. wall: garment wall thickness (qa_wall): quads that short are rims, not slivers."""
     bm = bmesh.new()
     bm.from_mesh(me)
     bm.normal_update()
@@ -57,14 +57,17 @@ def topology(me):
     tri = bm.copy()
     sides = tri.faces.layers.int.new("qa_sides")
     fid = tri.faces.layers.int.new("qa_face")
+    rim = set()
     for i, f in enumerate(tri.faces):
         f[sides], f[fid] = len(f.verts), i
+        if wall and len(f.verts) == 4 and 0.5 * wall < min(e.calc_length() for e in f.edges) < 1.6 * wall:
+            rim.add(i)  # the thin side of a garment wall (Solidify rim): thin by design
     bmesh.ops.triangulate(tri, faces=tri.faces[:])
     groups = {}
     for f in tri.faces:
         groups.setdefault(f[fid], []).append(f)
-    sl = sl_bad = 0
-    for parts in groups.values():
+    sl = sl_bad = sl_rim = 0
+    for gi, parts in groups.items():
         n0 = parts[0].normal
         folded = any(n0.angle(p.normal, 0.0) > math.radians(FOLD) for p in parts[1:] if p.normal.length > 0)
         for f in parts:
@@ -72,7 +75,10 @@ def topology(me):
             L = max(e.calc_length() for e in f.edges)
             if a < 1e-12 or L * L / (2 * a) > SLIVER:
                 sl += 1
-                sl_bad += f[sides] == 3 or folded
+                if gi in rim:
+                    sl_rim += 1
+                else:
+                    sl_bad += f[sides] == 3 or folded
     n_tri = len(tri.faces)
     tri.free()
     # duplicate vertices (closer than 0.01 mm)
@@ -87,7 +93,7 @@ def topology(me):
         "quads": int((sizes == 4).sum()), "tris_faces": int((sizes == 3).sum()), "ngons": int((sizes > 4).sum()),
         "boundary_edges": boundary, "nonmanifold_edges": over, "loose_edges": loose_e, "loose_vertices": loose_v,
         "inconsistent_normal_edges": flipped_edges, "interior_faces": interior, "zero_area_faces": zero_area,
-        "signed_volume_m3": round(vol, 6), "slivers": sl, "slivers_bad": sl_bad, "duplicate_vertices": dup,
+        "signed_volume_m3": round(vol, 6), "slivers": sl, "slivers_bad": sl_bad, "slivers_rim": sl_rim, "duplicate_vertices": dup,
     }
 
 
@@ -191,7 +197,7 @@ def main():
     joined = []
     for ob in objs:
         me = Q.evaluated_mesh(ob)
-        t = topology(me)
+        t = topology(me, float(ob.get("qa_wall", 0.0)))
         t["asymmetric_on_purpose"] = bool(ob.get("qa_asym", False))
         t["symmetry_unmatched"] = symmetry(me)
         t["uv"] = uv_check(me)
@@ -221,7 +227,11 @@ def main():
         info("triangles", total["triangles"])
     for name, t in report["objects"].items():
         holes = t["boundary_edges"] + t["nonmanifold_edges"]
-        gate(f"{name}: closed", holes == 0, holes, 0)
+        if bpy.data.objects[name].get("qa_open_ok"):
+            # skin under clothes removed on purpose (tools/blender/clothes.py): its edges sit inside a garment
+            info(f"{name}: open on purpose (covered by clothes), boundary edges", holes)
+        else:
+            gate(f"{name}: closed", holes == 0, holes, 0)
         gate(f"{name}: normals consistent", t["inconsistent_normal_edges"] == 0, t["inconsistent_normal_edges"], 0)
         if holes == 0:
             gate(f"{name}: normals outward", t["signed_volume_m3"] > 0, t["signed_volume_m3"], "> 0")

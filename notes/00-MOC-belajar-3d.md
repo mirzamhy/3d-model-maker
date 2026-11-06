@@ -32,6 +32,7 @@ Pintu masuk semua catatan belajar. Kembali ke [Home](../Home.md).
 - [Uji gerak di browser](uji-gerak-viewer.md): lama vs baru berdampingan, jalan/jongkok/lompat/zombie; rumus rotasi sumbu dunia
 - [Torso](parts/torso.md): torso Blender v2 (cadangan, diganti badan F2)
 - [Tangan (jari)](parts/tangan.md): telapak 10 titik, 4 jari 3 ruas + jempol dari face buku jari (cara Rozi); v11 survivor **disetujui**
+- [Baju modular](parts/baju.md): kaos, cargo, bot dari face badan + Solidify, bobot badan, kulit tertutup dibuang; E4 cek tembus; survivor v13
 - [Rig game](parts/rig.md): 52 tulang deform dari posisi sendi ref_body, bobot cincin (bukan bone heat), uji E4 8 pose; batas siku 110°, lutut 130° (bobot engsel)
 - [Telinga (ear)](parts/ear.md): gaya setengah hati dari referensi user; v13 **disetujui** (trace titik per titik dari gambar user, n-gon utuh)
 
