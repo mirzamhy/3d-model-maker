@@ -14,6 +14,8 @@ import sys
 import bmesh
 import bpy
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # head_template (ear trace)
+
 COLS = [0, 22, 48, 90, 120, 180]
 
 # Head columns (half, front centre -> back centre). The head is its own object, so it can have more columns than
@@ -46,7 +48,7 @@ NECK = dict(a=0.036, front=0.042, back=0.040)  # neck stick: ellipse around z = 
 NECK_Y = [-0.050, -0.132, -0.152, -0.172]  # top cap (inside the head), loop (kept by ref_body), tube, capped ring (cut off by ref_body)
 
 # hair helmet: per column the hairline height, thickness at the crown / at the rim
-HAIRLINE = {0: 0.066, 10: 0.065, 22: 0.060, 48: 0.040, 90: -0.020, 120: -0.050, 180: -0.060}  # sides cover the ear top, back down to the skull base
+HAIRLINE = {0: 0.066, 10: 0.065, 22: 0.060, 48: 0.040, 90: 0.016, 120: -0.012, 180: -0.060}  # arch over the ear, back down to the skull base
 HAIR_TOP, HAIR_IN = 0.032, 0.002
 HAIR_TH = [0.032, 0.026, 0.015, 0.005]  # thickness per hair row (crown -> rim): volume on top, close at the rim
 HAIR_FRONT = [0.004, 0.006, 0.002, 0.0]  # extra at the front columns (0, 22): a raised front, not a bowl
@@ -59,7 +61,7 @@ TEETH = {
     (-10, 0): (0.016, -0.010, 0.5), (0, 10): (0.012, -0.012, 0.5), (10, 22): (0.010, -0.008, 0.5),
     (22, 48): (0.008, -0.004, 0.5), (-22, -10): (0.016, -0.008, 0.5), (-48, -22): (0.012, -0.008, 0.5),
     # sideburns: a point down in front of the ear
-    (48, 90): (0.027, 0.0, 0.8), (-48, -90): (0.027, 0.0, 0.8),
+    (48, 90): (0.046, 0.0, 0.8), (-48, -90): (0.046, 0.0, 0.8),
     # nape: the back panel ends in points at the neck
     (120, 180): (0.010, 0.0, 0.8), (-120, 180): (0.010, 0.0, 0.8),
 }
@@ -67,6 +69,14 @@ SKIN = (0.80, 0.58, 0.45)
 SOCKET = (0.60, 0.42, 0.34)
 HAIR_COL = (0.27, 0.18, 0.11)
 BROW_COL = (0.16, 0.10, 0.06)
+HEAD_GEO = []  # head() fills (verts, faces) in head coords: ears are placed on it
+
+# ears: the approved v13 trace (notes/parts/ear.md, head_template.EAR_TRACE / EAR_FACES), placed on this head with
+# ray casts instead of the old head's SDF. Root just behind the jaw edge (col 90), top at the brow, lobe at the nose.
+EAR_C = (0.0, -0.016, -0.040)  # ear frame centre start (x is found on the skin), head coords
+EAR_ROOT_Z = -0.004  # root edge just behind the jaw edge (col 90)
+EAR_SCALE = 0.92
+EAR_FLARE = 28  # deg (v13 on the old head: 15): the planar head is flatter at the side, the ear must stand off more
 
 
 def opts():
@@ -158,6 +168,7 @@ def head():
     faces += [[last + i for i in f] for f in cap]  # under the jaw and the skull base
     zone += [0] * (2 * len(cap))
     pal = {0: SKIN, 1: SOCKET, 2: (0.30, 0.15, 0.13), 3: (0.70, 0.45, 0.39)}
+    HEAD_GEO[:] = [verts, faces]
     ob = make("Head", verts, faces, lambda me: [pal[z] for z in zone])
     za = ob.data.attributes.new("zone", "INT", "FACE")  # read by head_paint
     for i, z in enumerate(zone):
@@ -278,16 +289,87 @@ def box(name, corners_front, depth, cols):
 
 
 def ears(rings):
-    """Small flat wedge ears on the side plane (behind col 90), mostly under the hair."""
-    vs, fs = [], []
-    for s in (1, -1):
-        b = len(vs)
-        base = [(0.066, 0.016, 0.000), (0.064, -0.040, 0.004), (0.060, -0.044, -0.028), (0.064, 0.014, -0.034)]
-        outp = [(0.082, 0.020, -0.008), (0.078, -0.036, -0.004), (0.076, -0.040, -0.026), (0.080, 0.016, -0.034)]
-        vs += [(s * x * HEAD_X, y, z) for x, y, z in base + outp]
-        q = [[0, 1, 2, 3], [7, 6, 5, 4], [0, 4, 5, 1], [1, 5, 6, 2], [2, 6, 7, 3], [3, 7, 4, 0]]
-        fs += [[b + i for i in f] for f in q]
-    return make("Ears", vs, fs, lambda me: [(0.84, 0.54, 0.43)] * len(me.polygons))
+    """v13 traced ears (half heart: rim, plateau, bowl, tragus block; n-gons kept whole) on both sides.
+    The ear plane turns T.EAR_ANGLE forward; the root edge sits T.EAR_ROOT_SINK inside the skin; glued points
+    (T.EAR_GLUE, back rings) are measured from the skin, hollows stay in front of it."""
+    import numpy as np
+    from mathutils import Vector
+    from mathutils.bvhtree import BVHTree
+    import head_template as T
+    verts, faces = HEAD_GEO
+    bvh = BVHTree.FromPolygons([Vector(v) for v in verts], faces)
+    a = math.radians(EAR_FLARE)
+    nvec = np.array([math.cos(a), 0.0, math.sin(a)])
+    tvec = np.array([-math.sin(a), 0.0, math.cos(a)])
+    yvec = np.array([0.0, 1.0, 0.0])
+
+    def surface(base):  # distance along nvec from each base point to the skin (ray from inside the head)
+        out = []
+        for b in base:
+            o = b - 0.05 * nvec
+            hit = bvh.ray_cast(Vector(o), Vector(nvec), 0.2)
+            out.append((hit[3] - 0.05) if hit[0] is not None else 0.0)
+        return np.array(out)
+
+    c = np.array(EAR_C, dtype=float)
+    for _ in range(4):  # push onto the skin, then slide so the root edge sits at EAR_ROOT_Z (pushing moves it)
+        roots = np.array([c + T.EAR_U0 * tvec + v / 1000 * yvec for v in (20, 4, -14)])
+        c = c + (float(surface(roots).mean()) - T.EAR_ROOT_SINK) * nvec
+        c[2] += EAR_ROOT_Z - (c + T.EAR_U0 * tvec)[2]
+    roots = np.array([c + T.EAR_U0 * tvec + v / 1000 * yvec for v in (20, 4, -14)])
+    c = c + (float(surface(roots).mean()) - T.EAR_ROOT_SINK) * nvec
+
+    def place(pts, front=True, skin=()):
+        q = np.array(pts, dtype=float) / 1000
+        q[:, :2] *= EAR_SCALE
+        base = c + np.outer(T.EAR_U0 + q[:, 0], tvec) + np.outer(q[:, 1], yvec)
+        sd = surface(base)
+        n = q[:, 2] + np.maximum(0.0, sd - T.EAR_ROOT_SINK)
+        if front:
+            n = np.maximum(n, sd + T.EAR_FLOOR_MIN)
+        for i in skin:
+            n[i] = sd[i] + q[i, 2]
+        return base + np.outer(n, nvec)
+
+    names = list(T.EAR_TRACE)
+    front = place([T.ear_uv(k) for k in names], skin=[names.index(k) for k in T.EAR_GLUE])
+    out = np.array([T.ear_uv(k) for k in T.EAR_OUTLINE])
+    mid = out[:, :2].mean(axis=0)
+    m = len(T.EAR_OUTLINE)
+    back = [place([(mid[0] + (u - mid[0]) * sc, mid[1] + (v - mid[1]) * sc, nn) for u, v, _ in out], False,
+                  range(m) if i in T.EAR_SKIN_BACK else ()) for i, (sc, nn) in enumerate(T.EAR_BACK)]
+    back_c = place([(mid[0], mid[1], T.EAR_BACK_C)], False, (0,))[0]
+    at = {k: i for i, k in enumerate(names)}
+    one_v = [tuple(p) for p in front]
+    one_f, one_z = [], []
+    for z, f in T.EAR_FACES:
+        one_f.append([at[k] for k in f.split()])
+        one_z.append(z)
+    chain = [[at[k] for k in T.EAR_OUTLINE]]
+    for r in back:
+        chain.append(list(range(len(one_v), len(one_v) + m)))
+        one_v += [tuple(p) for p in r]
+    bci = len(one_v)
+    one_v.append(tuple(back_c))
+    for i in range(len(chain) - 1):
+        for k in range(m):
+            one_f.append([chain[i][(k + 1) % m], chain[i][k], chain[i + 1][k], chain[i + 1][(k + 1) % m]])
+            one_z.append(0)
+    for k in range(m):
+        one_f.append([chain[-1][(k + 1) % m], chain[-1][k], bci])
+        one_z.append(0)
+    vs, fs, zs = [], [], []
+    for sgn in (1, -1):
+        o = len(vs)
+        vs += [(sgn * x, y, z) for x, y, z in one_v]
+        fs += [[o + i for i in f] for f in one_f]
+        zs += one_z
+    pal = {0: (0.80, 0.55, 0.43), 1: (0.86, 0.57, 0.45), 2: (0.82, 0.56, 0.44), 3: (0.70, 0.44, 0.36)}
+    ob = make("Ears", vs, fs, lambda me: [pal[z] for z in zs])
+    za = ob.data.attributes.new("ear_zone", "INT", "FACE")  # head_paint EAR_ZONE colours
+    for i, z in enumerate(zs):
+        za.data[i].value = z
+    return ob
 
 
 def brows(rings):

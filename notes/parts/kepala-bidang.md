@@ -2,15 +2,15 @@
 tags: [part, kepala, rambut, kartu-part, gaya]
 dibuat: 2026-11-06
 part: kepala
-versi: v16d
+versi: v16e
 ---
-# Kartu part: kepala bidang besar (survivor v16d)
+# Kartu part: kepala bidang besar (survivor v16e)
 
 Pengganti kepala `head_masc_v1` (sculpt → banyak face kecil, rambut duri). Gaya dari GIF referensi user:
 ![](../attachments/ref/lowpoly_head_ref.gif)
 
-Kode: `tools/blender/head_planes.py` → `output/head-game/template/head_lp_v4.blend` (kepala 156 face + leher tusuk).
-Rantai: `head_planes.py` → `ref_body.py` (RB_HEAD=head_lp_v4; v16c: v3, v16b: v2, v16a: v1) → `head_paint.py` → rig → baju. Langkah `hair_lowpoly.py` tidak dipakai (rambut sudah ada di template).
+Kode: `tools/blender/head_planes.py` → `output/head-game/template/head_lp_v5.blend` (kepala 156 face + leher tusuk + telinga v13).
+Rantai: `head_planes.py` → `ref_body.py` (RB_HEAD=head_lp_v5; v16d: v4, v16c: v3, v16b: v2, v16a: v1) → `head_paint.py` → rig → baju. Langkah `hair_lowpoly.py` tidak dipakai (rambut sudah ada di template).
 
 ![](../attachments/qa/turn_v13_v16a.gif)
 Kiri referensi, tengah v13, kanan v16a. Diam: `turn_v13_v16a_still.png`.
@@ -55,6 +55,16 @@ Dibanding GIF: rambut v16c berhenti di atas telinga, kulit terlihat di belakang 
 
 ![](../attachments/qa/turn_v16c_v16d.gif)
 
+## v16e: telinga
+Telinga v13 yang dulu disetujui ([telinga](ear.md): trace setengah hati, n-gon utuh) dipakai ulang: data `EAR_TRACE` / `EAR_FACES` dari `head_template.py`, penempatan baru di `head_planes.ears`.
+- Kulit dicari dengan **ray cast** ke kepala bidang (BVHTree dari poligon `Head`), bukan SDF kepala lama.
+- **Pangkal dikunci** di `EAR_ROOT_Z` −0.004 (tepat di belakang tepi rahang). Dorongan ke kulit sepanjang normal yang miring ikut menggeser telinga ke depan (pertama kali pangkal berada di pipi, z +0.021, dan telinga rata dengan pipi), jadi posisi diulang: dorong → geser pangkal ke target → dorong lagi.
+- **Mekar 28°** (`EAR_FLARE`; di kepala lama 15°): sisi kepala bidang lebih rata, telinga harus berdiri lebih jauh supaya terlihat dari depan dan belakang. Skala 0.92.
+- Rambut: garis rambut kolom 90 naik ke 0.016 (lengkung di atas telinga), sudut belakang (120) ke −0.012; cambang turun 46 mm di depan telinga. Bagian atas telinga masuk ke rambut seperti di GIF.
+- Hasil (berbaju): E1 50/50, E4 sama (siku 120° saja), 3088 tris, glb 360 KB. IoU kepala depan 0.852, samping 0.845. Tanpa baju, gerbang sliver gagal tipis (0.0261 > 0.02): n-gon dan segitiga telinga. Dengan baju lolos.
+
+![](../attachments/qa/turn_v16d_v16e.gif)
+
 ## Hasil v16a (kepala + leher satu loft)
 | | v13 | v16a |
 |---|---|---|
@@ -72,7 +82,8 @@ IoU samping turun: lembar survivor punya rambut jabrik tinggi, kepala baru ikut 
 - Nama skrip baru: cek dulu tidak menimpa modul lama (`head_lowpoly.py` dipakai `head_game.py`).
 - **Kepala dan leher sebaiknya dua bagian** (bola + tusuk) untuk gaya ini: loft kepala langsung ke leher membuat batas kepala-leher kabur dan rahang terlihat menyatu dengan leher. Kepala kaku juga lebih aman saat menoleh (tidak ada face rahang yang terlipat).
 - Bagian yang berdiri sendiri (kepala) boleh punya topologi sendiri: detail (batang hidung, mulut) butuh kolom yang tidak ada di leher.
+- Bagian yang sudah disetujui dipakai ulang lewat **data** (trace titik + muka), bukan lewat fungsi penempatan lama: penempatan bergantung pada kepala, bentuknya tidak.
 - Turntable 30 frame (12° per frame) di samping GIF referensi jauh lebih jelas daripada 3 sudut.
 
 ## Berikutnya
-- Penilaian user. Telinga lebih bentuk (sekarang lempeng); poni lebih tajam seperti GIF.
+- Penilaian user. Poni lebih tajam seperti GIF.
