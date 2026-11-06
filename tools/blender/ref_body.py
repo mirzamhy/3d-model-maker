@@ -34,12 +34,25 @@ OUT = os.path.join(ROOT, "output", "ref", REF)
 HEAD_SRC = os.path.join(ROOT, os.environ.get("RB_HEAD", "output/head-game/template/head_nose_v2.blend"))
 HEIGHT = float(os.environ.get("REF_HEIGHT", "1.78"))
 EXP = 2.0 / float(os.environ.get("RB_ROUND", "2.6"))  # superellipse exponent for the diagonals
+TRUNK_EXP = 2.0 / float(os.environ.get("RB_TRUNK_ROUND", os.environ.get("RB_ROUND", "2.6")))  # trunk only: 2 = ellipse
 S = HEIGHT / 1.729  # stature ratio to F2 (prior sizes)
 ARM_DEPTH = 0.95  # arm front/back half depth = this x vertical half thickness (F2 prior)
 FOOT_BOX = 0.5  # superellipse exponent for foot sections (n = 4: boxy)
 HAIR = 0.035  # hair above the skull at the crown (m), the template head fits under it
 COLS = Q.COLS
+HAND_ANG = [0, 21, 73, 107, 159, 180, 201, 253, 287, 339]  # palm ring: 8-ring with both side points split;
+# angles chosen so the 4 knuckle faces are equally wide after the boxy superellipse (|sin a|^(2/3) = 0.5, 0.97)
+PALM_LEN = 0.5  # knuckles at this share of wrist -> middle finger tip
+FINGERS = [(0.72, 10.0), (0.9, 3.5), (1.0, -1.5), (0.9, -7.0)]  # little, ring, middle, index: length share, spread deg (+ = toward the little-finger side)
+FINGER_SEG = [0.42, 0.33, 0.25]  # segment shares: proximal, middle, distal
+FINGER_CURL = [3.0, 9.0, 14.0]  # degrees bent toward the palm at each segment (relaxed hand)
+FINGER_SIZE = [(0.66, 0.88), (0.6, 0.8), (0.5, 0.66)]  # ring width/thickness share of the knuckle face
 ARM_ANG = Q.ARM_ANG
+KNEE_RINGS = [float(d) for d in os.environ.get("RB_KNEE", "0.05,0,-0.05").split(",")]  # ring offsets around the knee (m), must hold 0. 5 rings (+-0.025) flipped sooner in the rig test: keep 3
+KNEE_PINCH = float(os.environ.get("RB_KNEE_PINCH", "0"))  # 0..1: how far the knee rings close in at the back. Tested 0.6 / 0.75: worse than 0 (the rig fixes the knee in weights)
+ARMPIT_FOLD = float(os.environ.get("RB_ARMPIT_FOLD", "0"))  # 0..1: arm root front pulled to the chest front plane
+NECK_ANCHOR = os.environ.get("RB_NECK_ANCHOR", "1") == "1"  # trunk depth across the arm band ends at the neck base (v12)
+JOINTS = {}  # left-side joint centres for the rig (tools/blender/rig_game.py), Blender coords
 
 
 class Sil:
@@ -197,7 +210,15 @@ def build(sil, L, head_ring):
     ys_ok = [y for y in np.linspace(y_cr, y_neck, 80) if not band[0] <= y <= band[1]]
     zb_ok = [sil.side_run(y)[0] for y in ys_ok]
     zf_ok = [sil.side_run(y)[1] for y in ys_ok]
-    zfb = lambda y: (float(np.interp(y, ys_ok, zb_ok)), float(np.interp(y, ys_ok, zf_ok)))
+    if NECK_ANCHOR:
+        # the arm band reaches past the neck base, so nothing above it was measured and np.interp held the last
+        # value: a vertical back and chest, then a step into the neck (a right angle in the side view). The neck
+        # base ring is the top anchor: the upper back and upper chest slope into the neck as in the reference.
+        yb_ok, zb_ok = ys_ok + [float(base_y[180])], zb_ok + [float(base[180][2])]
+        yf_ok, zf_ok = ys_ok + [float(base_y[0])], zf_ok + [float(base[0][2] + SCM_DEPTH)]
+    else:
+        yb_ok = yf_ok = ys_ok
+    zfb = lambda y: (float(np.interp(y, yb_ok, zb_ok)), float(np.interp(y, yf_ok, zf_ok)))
     trap_half = (lambda r: (r[1] - r[0]) / 2)(sil.front_run(rows[0]))
     for r, y in enumerate(rows, start=1):
         zb, zf = zfb(y)
@@ -210,7 +231,7 @@ def build(sil, L, head_ring):
             if r in Q.HOLE_ROWS and col in (48, 90, 120):
                 continue
             t = math.radians(col)
-            cf, sf = se(math.cos(t), math.sin(t))
+            cf, sf = se(math.cos(t), math.sin(t), TRUNK_EXP)
             y_c, zb_c, zf_c = y, zb, zf
             if NECK_TILT and r in (1, 2) and col in MID_SPREAD:
                 # big head = short neck: throat (y_neck), trapezius row and arm-top row sit within 7 mm, a band of
@@ -232,6 +253,7 @@ def build(sil, L, head_ring):
         j0, j1 = max(i - 1, 0), min(i + 1, len(pts) - 1)
         tans.append(pts[j1] - pts[j0])
     afr = Q.frames(pts, tans, np.array([0, 1.0, 0]))
+    JOINTS.update(arm_root=pts[0], elbow=pts[4])  # elbow: middle of the rings at 0.5 / 0.55 / 0.6
     hole = {0: (2, 90), 1: (2, 48), 2: (3, 48), 3: (4, 48), 4: (4, 90), 5: (4, 120), 6: (3, 120), 7: (2, 120)}
     ak = lambda i, k: tk(*hole[k]) if i == 0 else ("L", "a", i, k)
     for i, (fr, t) in enumerate(zip(afr, dims)):
@@ -239,48 +261,108 @@ def build(sil, L, head_ring):
         for k, a in enumerate(ARM_ANG):
             cu, sw = se(math.cos(math.radians(a)), math.sin(math.radians(a)))
             pos[ak(i, k)] = c + e1 * t * cu + e2 * t * ARM_DEPTH * sw
-    # ---- hand (mitten), sizes from the F2 prior, length from the silhouette ----
-    n_arm = len(afr)
-    wrist_c = afr[-1][0]
-    tip = np.array([L["tip"] - 0.008, axis_y(L["tip"] - 0.03), z_arm])
-    hand = [(0.22, 0.043 * S, 0.017 * S), (0.58, 0.045 * S, 0.014 * S), (0.80, 0.040 * S, 0.011 * S),
-            (0.96, 0.030 * S, 0.008 * S)]
-    hp = [wrist_c + (tip - wrist_c) * s for s, _, _ in hand]
-    hfr = Q.frames(hp, [tip - wrist_c] * len(hp), afr[-1][2])
-    for j, (fr, (_, hw, ht)) in enumerate(zip(hfr, hand)):
-        c, _, e1, e2 = fr
+    # armpit front fold: the front of the arm root (and less of the next ring) moves forward toward the chest front
+    # plane, so the chest wraps onto the arm instead of a step from the chest down to the arm root
+    for i, w_ in ((0, ARMPIT_FOLD), (1, ARMPIT_FOLD * 0.4)):
         for k, a in enumerate(ARM_ANG):
-            cu, sw = se(math.cos(math.radians(a)), math.sin(math.radians(a)), 2 / 3.0)
-            pos[ak(n_arm + j, k)] = c + e1 * ht * cu + e2 * hw * sw
-    n_ring = n_arm + len(hand)
-    for i in range(n_ring - 1):
+            f_ = max(0.0, math.sin(math.radians(a)))
+            p_ = pos[ak(i, k)]
+            target = zfb(p_[1])[1]
+            if target > p_[2]:
+                p_[2] += w_ * f_ * (target - p_[2])
+    # ---- hand: palm (2 rings of 10) -> 4 fingers (3 segments each) + thumb (3 segments). Box modeling as in the
+    # Rozi 3D tutorial: the knuckle end is cut into 4 faces, each face is extruded into a finger with a ring at every
+    # joint (the rig bends there). Sizes from the F2 prior, the middle finger tip from the silhouette.
+    n_arm = len(afr)
+    for i in range(n_arm - 1):
         for k in range(8):
             faces.append([ak(i, k), ak(i, (k + 1) % 8), ak(i + 1, (k + 1) % 8), ak(i + 1, k)])
-    last = n_ring - 1
-    faces += [[ak(last, k) for k in q] for q in ((0, 1, 2, 3), (4, 5, 6, 7), (0, 3, 4, 7))]
-    # thumb along the palm side (forward, toward the fingers)
-    hdir = Q.unit(tip - wrist_c)
-    th0 = wrist_c + hdir * 0.03 * S + np.array([0, -0.012, 0.03]) * S
-    th2 = th0 + hdir * 0.05 * S + np.array([0, -0.012, 0.03]) * S
-    th1 = (th0 + th2) / 2
-    i_w = n_arm - 1
-    best = max(([ak(i_w, k), ak(i_w, (k + 1) % 8), ak(i_w + 1, (k + 1) % 8), ak(i_w + 1, k)] for k in range(8)),
-               key=lambda f: Q.unit(np.mean([pos[q] for q in f], 0) - (wrist_c + hp[0]) / 2) @ Q.unit(th1 - wrist_c))
-    faces.remove(best)
-    base = np.mean([pos[q] for q in best], 0)
-    tdir = Q.unit(th2 - th0)
-    prev = best
-    for j, (c, size) in enumerate(((th1, 0.015 * S), (th2, 0.011 * S))):
-        ring = []
-        for m_, q in enumerate(best):
-            off = pos[q] - base
-            off = Q.unit(off - (off @ tdir) * tdir) * size
-            pos[("L", "th", j, m_)] = c + off
-            ring.append(("L", "th", j, m_))
-        for m_ in range(4):
-            faces.append([prev[m_], prev[(m_ + 1) % 4], ring[(m_ + 1) % 4], ring[m_]])
-        prev = ring
-    faces.append(prev[::-1])
+    wrist_c = afr[-1][0]
+    tip = np.array([L["tip"] - 0.008, axis_y(L["tip"] - 0.03), z_arm])
+    hvec = tip - wrist_c
+    hlen = float(np.linalg.norm(hvec))
+    hdir = hvec / hlen
+    palm = [(0.16, 0.043 * S, 0.017 * S), (PALM_LEN, 0.047 * S, 0.0125 * S)]  # last ring = knuckles
+    hp = [wrist_c + hvec * f_ for f_, _, _ in palm]
+    hfr = Q.frames(hp, [hvec] * len(hp), afr[-1][2])
+    JOINTS.update(wrist=wrist_c, knuckles=hp[1])
+    hk = lambda j, k: ("L", "h", j, k)
+    for j, (fr, (_, hw, ht)) in enumerate(zip(hfr, palm)):
+        c, _, e1, e2 = fr
+        for k, a in enumerate(HAND_ANG):
+            cu, sw = se(math.cos(math.radians(a)), math.sin(math.radians(a)), 2 / 3.0)
+            pos[hk(j, k)] = c + e1 * ht * cu + e2 * hw * sw
+    # wrist ring (8) -> palm ring (10): the two side points split in two (one triangle per side)
+    W = n_arm - 1
+    hv = {0: [0], 1: [1], 2: [2, 3], 3: [4], 4: [5], 5: [6], 6: [7, 8], 7: [9]}
+    for k in range(8):
+        k2 = (k + 1) % 8
+        faces.append([ak(W, k), ak(W, k2), hk(0, hv[k2][0]), hk(0, hv[k][-1])])
+        if len(hv[k]) == 2:
+            faces.append([ak(W, k), hk(0, hv[k][-1]), hk(0, hv[k][0])])
+    thumb_k = 3  # palm face between 102 and 135 deg: front, under (palm down in the T-pose)
+    for k in range(10):
+        if k != thumb_k:
+            faces.append([hk(0, k), hk(0, (k + 1) % 10), hk(1, (k + 1) % 10), hk(1, k)])
+
+    def rot(v, axis, deg):
+        axis = Q.unit(axis)
+        a = math.radians(deg)
+        return v * math.cos(a) + np.cross(axis, v) * math.sin(a) + axis * (axis @ v) * (1 - math.cos(a))
+
+    def tube(base, centre0, path, sizes, frames_, key):
+        """Extrude a 4-vertex base face along path points: one ring per point (scaled offsets), cap at the end."""
+        e1k, e2k = frames_
+        prev = base
+        for j, (c, (fw, fh), (e1r, e2r)) in enumerate(zip(path, sizes, key["frames"])):
+            ring = []
+            for m_, q in enumerate(base):
+                off = pos[q] - centre0
+                kk = key["name"] + (j, m_)  # flat key starting with "L": mirrored to the right hand
+                if "dir" in key:  # radial: corner direction kept, size absolute (m) -> a square tube
+                    d_ = key["dir"]
+                    pos[kk] = c + Q.unit(off - (off @ d_) * d_) * fw
+                else:
+                    pos[kk] = c + e2r * (off @ e2k) * fw + e1r * (off @ e1k) * fh
+                ring.append(kk)
+            for m_ in range(4):
+                faces.append([prev[m_], prev[(m_ + 1) % 4], ring[(m_ + 1) % 4], ring[m_]])
+            prev = ring
+        faces.append(prev[::-1])
+
+    _, _, e1, e2 = hfr[-1]
+    top = [hk(1, k) for k in (8, 9, 0, 1, 2)]  # back (little finger) -> front (index), knuckle ring
+    bot = [hk(1, k) for k in (7, 6, 5, 4, 3)]
+    fl = hlen * (1 - PALM_LEN)  # middle finger length
+    for i, (lk, spread) in enumerate(FINGERS):  # little, ring, middle, index
+        base = [top[i], top[i + 1], bot[i + 1], bot[i]]
+        bc = np.mean([pos[q] for q in base], 0)
+        d0 = rot(hdir, e1, spread)
+        ln = fl * lk
+        pts_, frs = [], []
+        p, d, e1r = bc, d0, e1
+        for seg, curl in zip(FINGER_SEG, FINGER_CURL):
+            ax = np.cross(d, e1r)  # bend toward the palm (down) about the finger's sideways axis
+            d, e1r = rot(d, ax, curl), rot(e1r, ax, curl)
+            p = p + d * ln * seg
+            pts_.append(p)
+            frs.append((Q.unit(e1r), Q.unit(np.cross(d, e1r))))
+        tube(base, bc, pts_, FINGER_SIZE, (e1, e2), {"name": ("L", "f", i), "frames": frs})
+        JOINTS[f"finger{i}"] = [bc] + pts_
+    # thumb from the palm face left out above
+    base = [hk(0, thumb_k), hk(0, thumb_k + 1), hk(1, thumb_k + 1), hk(1, thumb_k)]
+    bc = np.mean([pos[q] for q in base], 0)
+    _, _, e1t, e2t = hfr[0]
+    tdir = Q.unit(hdir * 0.6 + e2t * 0.6 - e1t * 0.15)  # forward along the palm, a little under it
+    t_side = Q.unit(np.cross(tdir, e1t))
+    up_t = Q.unit(np.cross(t_side, tdir))
+    pts_ = [bc + tdir * 0.055 * S * f_ for f_ in (0.4, 0.75, 1.0)]
+    sizes = [(0.013 * S, 0), (0.011 * S, 0), (0.0075 * S, 0)]  # corner radius (m)
+    # base offsets are measured in the face's own plane: use the face's two edge directions
+    fa = Q.unit(pos[base[1]] - pos[base[0]])
+    fb = Q.unit(np.cross(Q.unit(bc - np.mean([pos[hk(0, k)] for k in range(10)], 0)), fa))
+    tube(base, bc, pts_, sizes, (fb, fa), {"name": ("L", "t"), "frames": [(up_t, t_side)] * 3, "dir": tdir})
+    JOINTS["thumb"] = [bc] + pts_
     # ---- trunk faces ----
     nrows = len(rows) + 1
     for r in range(nrows - 1):
@@ -309,7 +391,7 @@ def build(sil, L, head_ring):
     kn, an, cr = L["knee"], L["ankle"], L["crotch"]
     # more rings where the silhouette changes: thigh, 3 around the knee (above, on, below the joint: the rig bends
     # on the middle one), calf bulge, above the ankle, ankle
-    leg_y = [cr - 0.08, cr - 0.20, kn + 0.05, kn, kn - 0.05, kn - 0.12, kn - 0.22, an + 0.05, an]
+    leg_y = [cr - 0.08, cr - 0.20] + [kn + d for d in KNEE_RINGS] + [kn - 0.12, kn - 0.22, an + 0.05, an]
     rings = []
     for y in leg_y:
         xc, w, zb, zf = leg_sec(y)
@@ -317,6 +399,16 @@ def build(sil, L, head_ring):
         rings.append([np.array([xc + w * se(math.cos(math.radians(a)), math.sin(math.radians(a)))[1], y,
                                 zm + ((zf - zm) if math.cos(math.radians(a)) >= 0 else (zm - zb)) *
                                 se(math.cos(math.radians(a)), math.sin(math.radians(a)))[0]]) for a in ang])
+    # knee wedge: the rings above and below the knee move toward the knee ring at the back (the crease), so the
+    # back faces are short and fold together while the kneecap keeps wide faces (game knee topology)
+    k0 = 2 + KNEE_RINGS.index(0.0)
+    for i, d in enumerate(KNEE_RINGS):
+        if d == 0.0:
+            continue
+        for k, a in enumerate(ang):
+            back = max(0.0, -math.cos(math.radians(a)))
+            t = KNEE_PINCH * back
+            rings[2 + i][k] = rings[2 + i][k] * (1 - t) + rings[k0][k] * t
     # foot: low-poly wedge like a simple boot (flat sole, straight top from the instep down to a short square toe,
     # boxy sections). It is not subdivided or decimated later (ref_detail pins it), so these rings are final.
     xa, wa, zba, zfa = leg_sec(an + 0.03)
@@ -340,6 +432,10 @@ def build(sil, L, head_ring):
     for i, ring in enumerate(rings, start=1):
         for k, p in enumerate(ring):
             pos[lk(i, k)] = p
+    rc_ = [np.mean(r, 0) for r in rings]
+    JOINTS.update(hip=c0, knee=rc_[leg_y.index(kn)], ankle=rc_[len(leg_y) - 1], heel=rc_[len(leg_y)],
+                  ball=rc_[len(leg_y) + 2], toe=rc_[len(leg_y) + 3], crotch_y=L["crotch"], chin_y=L["chin"],
+                  crown_y=L["crown"], sh_top_y=L["sh_top"], neck_base_y=y_neck)
     nl = len(rings) + 1
     for i in range(nl - 1):
         for k in range(8):
@@ -531,6 +627,9 @@ def main():
     os.makedirs(OUT, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(OUT, f"{TAG}.blend"))
     json.dump(st, open(os.path.join(OUT, f"stats_{TAG}.json"), "w"), indent=1)
+    bl = lambda v: [round(float(c), 5) for c in Q.to_bl(v)] if hasattr(v, "__len__") else round(float(v), 5)
+    jt = {k: ([bl(p) for p in v] if isinstance(v, list) else bl(v)) for k, v in JOINTS.items()}
+    json.dump(jt, open(os.path.join(OUT, f"joints_{TAG}.json"), "w"), indent=1)
     print("RB_STATS", json.dumps(st))
 
 

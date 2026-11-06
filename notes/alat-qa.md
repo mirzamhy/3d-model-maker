@@ -164,5 +164,21 @@ Catatan: sliver lolos tipis (1.99 %) karena tris rambut yang semuanya bersih men
 
 ## Batas alat (belum)
 - Cincin lutut/siku hanya perkiraan (pita tinggi tetap, T-pose). Untuk A-pose belum ada.
-- E4 (uji deformasi saat dipose) belum dibuat: butuh rig dulu.
+- E4 sudah ada (`tools/qa/deform_test.py`), lihat [Rig game](parts/rig.md). Sudut tekuk tiap pose masih tetap; belum ada uji animasi berjalan.
 - Landmark gagal dicari pada siluet yang bukan manusia T-pose; IoU tetap jalan.
+
+## Survivor v12: punggung dan dada atas (6 Nov 2026)
+User: "dadanya terlalu kotak, kaya siku". Dari samping, punggung atas tegak lurus lalu patah ke leher, dan dada atas
+punya beting datar 8 cm ke tenggorokan.
+**Sebab:** di pita lengan (T-pose menutupi siluet samping) kedalaman badan diinterpolasi dari baris di luar pita. Pita
+melewati dasar leher, jadi tidak ada data di atasnya dan `np.interp` memakai nilai terakhir (punggung 0.156 tetap dari
+z 1.255 sampai 1.393). **Perbaikan:** cincin dasar leher jadi titik atas interpolasi (`NECK_ANCHOR`, default nyala).
+Hasil: IoU samping 0.881 → **0.891** (pita badan 0.921 → 0.948), E1 35/35, E4 face terbalik tinggal siku 120°
+(menoleh jadi bersih).
+![](attachments/qa/torso_v11_v12.png)
+Atas v11, bawah v12 (pose kepal: depan, 3/4, samping, atas).
+Dicoba juga: penampang badan lebih bulat (`RB_TRUNK_ROUND` 2.2 / 2.0) hanya memindahkan sudut dari depan ke samping
+(ring badan 10 titik), dan lipatan ketiak depan (`RB_ARMPIT_FOLD`) tidak membantu: keduanya default mati.
+**Pelajaran:** interpolasi dengan `np.interp` diam-diam menahan nilai ujung. Selalu pastikan ada titik data di kedua sisi
+pita yang diisi; cek profil garis tengah (depan/belakang per baris) setelah build.
+
