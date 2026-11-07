@@ -2,15 +2,15 @@
 tags: [part, kepala, rambut, kartu-part, gaya]
 dibuat: 2026-11-06
 part: kepala
-versi: v16e
+versi: v16f
 ---
-# Kartu part: kepala bidang besar (survivor v16e)
+# Kartu part: kepala bidang besar (survivor v16f)
 
 Pengganti kepala `head_masc_v1` (sculpt → banyak face kecil, rambut duri). Gaya dari GIF referensi user:
 ![](../attachments/ref/lowpoly_head_ref.gif)
 
-Kode: `tools/blender/head_planes.py` → `output/head-game/template/head_lp_v5.blend` (kepala 156 face + leher tusuk + telinga v13).
-Rantai: `head_planes.py` → `ref_body.py` (RB_HEAD=head_lp_v5; v16d: v4, v16c: v3, v16b: v2, v16a: v1) → `head_paint.py` → rig → baju. Langkah `hair_lowpoly.py` tidak dipakai (rambut sudah ada di template).
+Kode: `tools/blender/head_planes.py` → `output/head-game/template/head_lp_v6.blend` (kepala 156 face + leher tusuk + telinga v13 + detail).
+Rantai: `head_planes.py` → `ref_body.py` (RB_HEAD=head_lp_v6; v16e: v5, v16d: v4, v16c: v3, v16b: v2, v16a: v1) → `head_paint.py` → rig → baju. Langkah `hair_lowpoly.py` tidak dipakai (rambut sudah ada di template).
 
 ![](../attachments/qa/turn_v13_v16a.gif)
 Kiri referensi, tengah v13, kanan v16a. Diam: `turn_v13_v16a_still.png`.
@@ -65,6 +65,16 @@ Telinga v13 yang dulu disetujui ([telinga](ear.md): trace setengah hati, n-gon u
 
 ![](../attachments/qa/turn_v16d_v16e.gif)
 
+## v16f: detail kecil tanpa ubah bentuk
+User: struktur sudah bagus, perdetail sedikit, jangan banyak perubahan. Geometri kepala tidak diubah; detail lewat warna zona dan objek kecil:
+- **Kelopak mata**: objek `Eyes`, lempeng tipis gelap di rongga mata (kolom 22–48, baris mata), ujung luar sedikit naik. Kaku di tulang kepala (`RIGID_HEAD`).
+- **Lubang hidung**: `zone` 4 di bawah hidung samping septum. Gelap penuh (0.45) terlihat seperti kotak hitam dari depan; 0.60 cukup.
+- **Rona hangat**: `zone` 5 di ujung hidung, septum, depan pipi.
+- **Helai rambut**: 3 baji pipih (`LOCKS`) di depan helm, ujung ke tepi dan ke kanan karakter. Percobaan 5 helai berderet seperti sisir; baji tinggi sempit seperti staples.
+- Hasil: E1 55/55 (berbaju), E4 sama (siku 120° saja), 3124 tris, glb 366 KB. Siluet tidak berubah (IoU kepala 0.852 / 0.844).
+
+![](../attachments/qa/turn_v16e_v16f.gif)
+
 ## Hasil v16a (kepala + leher satu loft)
 | | v13 | v16a |
 |---|---|---|
@@ -83,7 +93,8 @@ IoU samping turun: lembar survivor punya rambut jabrik tinggi, kepala baru ikut 
 - **Kepala dan leher sebaiknya dua bagian** (bola + tusuk) untuk gaya ini: loft kepala langsung ke leher membuat batas kepala-leher kabur dan rahang terlihat menyatu dengan leher. Kepala kaku juga lebih aman saat menoleh (tidak ada face rahang yang terlipat).
 - Bagian yang berdiri sendiri (kepala) boleh punya topologi sendiri: detail (batang hidung, mulut) butuh kolom yang tidak ada di leher.
 - Bagian yang sudah disetujui dipakai ulang lewat **data** (trace titik + muka), bukan lewat fungsi penempatan lama: penempatan bergantung pada kepala, bentuknya tidak.
+- **Detail tanpa ubah struktur**: zona warna di face yang sudah ada + objek kecil yang menempel (kelopak, helai). Siluet dan rig tidak terganggu.
 - Turntable 30 frame (12° per frame) di samping GIF referensi jauh lebih jelas daripada 3 sudut.
 
 ## Berikutnya
-- Penilaian user. Poni lebih tajam seperti GIF.
+- Penilaian user. Poni lebih tajam seperti GIF (helai sekarang halus).

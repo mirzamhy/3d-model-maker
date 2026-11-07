@@ -25,6 +25,7 @@ NECK = (0.74, 0.53, 0.41)
 BROW = (0.16, 0.10, 0.06)
 MOUTH_BAND = (0.30, 0.15, 0.13)  # head_planes: recessed mouth band
 LIP_LOW = (0.70, 0.45, 0.39)  # head_planes: lower lip
+NOSTRIL = (0.60, 0.39, 0.32)  # head_planes: nostril
 # ear zones (attribute ear_zone): 0 back, 1 helix rim, 2 antihelix, 3 concha bowl, 4 ear canal
 EAR_ZONE = {0: (0.80, 0.55, 0.43), 1: (0.86, 0.57, 0.45), 2: (0.82, 0.56, 0.44), 3: (0.70, 0.44, 0.36),
             4: (0.36, 0.20, 0.17)}
@@ -71,10 +72,10 @@ def face_colours(ob, rnd, fixed=None):
     attr = me.attributes.get("Col") or me.color_attributes.new("Col", "FLOAT_COLOR", "FACE")  # face-domain colours are not in color_attributes
     lips = me.attributes.get("lips")
     ez = me.attributes.get("ear_zone")
-    zone = me.attributes.get("zone")  # head_planes.py: 1 eye socket, 2 mouth, 3 lower lip
+    zone = me.attributes.get("zone")  # head_planes.py: 1 eye socket, 2 mouth, 3 lower lip, 4 nostril, 5 warm
     for p in me.polygons:
         if zone and zone.data[p.index].value:
-            base = {1: SOCKET, 2: MOUTH_BAND, 3: LIP_LOW}[zone.data[p.index].value]
+            base = {1: SOCKET, 2: MOUTH_BAND, 3: LIP_LOW, 4: NOSTRIL, 5: WARM}[zone.data[p.index].value]
         elif ez:
             base = EAR_ZONE[ez.data[p.index].value]
         elif fixed:

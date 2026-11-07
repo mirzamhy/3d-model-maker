@@ -42,6 +42,7 @@ ROWS = [
     (-0.122, [(0, 0.091), (0.014, 0.090), (0.028, 0.086), (0.035, 0.079), (0.036, 0.054), (0.030, 0.004, -0.108), (0, -0.026, -0.092)]),
 ]
 ROW_SOCKET, ROW_MOUTH, ROW_LIP = 3, 8, 9  # face bands (row i -> i + 1)
+ROW_NOSE_TIP, ROW_NOSE_UNDER, ROWS_CHEEK = 5, 6, (5, 6)  # bridge -> tip, tip -> under the nose, cheek front
 HEAD_X = 0.92  # skull + face narrower than the old template: a tall head, not a ball (jaw rows: 0.96)
 hx = lambda y: HEAD_X if y >= -0.06 else 0.96 if y <= -0.10 else HEAD_X + (0.96 - HEAD_X) * (-0.06 - y) / 0.04
 NECK = dict(a=0.036, front=0.042, back=0.040)  # neck stick: ellipse around z = -0.01: half width, front / back reach
@@ -54,6 +55,9 @@ HAIR_TH = [0.032, 0.026, 0.015, 0.005]  # thickness per hair row (crown -> rim):
 HAIR_FRONT = [0.004, 0.006, 0.002, 0.0]  # extra at the front columns (0, 22): a raised front, not a bowl
 HAIR_BACK = [0.002, 0.012, 0.012, 0.004]  # extra at the back columns (120, 180): the bulge over the skull base
 HAIR_ROWS = 4
+# locks on the front of the helmet: (ring index of the segment start, position along it, length m, lean +x)
+LOCKS = [(11, 0.3, 0.040, -0.020), (1, 0.4, 0.034, -0.016), (10, 0.5, 0.030, -0.014)]
+LOCK_W = 0.015  # half width at the root
 # hair points on the rim: (from col, to col) of a rim segment -> drop below the rim (m), sideways lean (+x), position
 # along the segment (0 = from col, 1 = to col). Tips lie on the skin (projected), not in the air.
 TEETH = {
@@ -161,13 +165,17 @@ def head():
                 z = 2
             elif i == ROW_LIP and kl < i22:
                 z = 3
+            elif i == ROW_NOSE_UNDER and kl == 1:
+                z = 4  # nostril: underside of the nose beside the septum
+            elif (i == ROW_NOSE_UNDER and kl == 0) or (i == ROW_NOSE_TIP and kl <= 1) or (i in ROWS_CHEEK and kl == i22):
+                z = 5  # warm: nose tip, septum, front of the cheek
             zone.append(z)
     cap = cap_faces(m, n)
     faces += cap  # crown
     last = (len(rings) - 1) * n
     faces += [[last + i for i in f] for f in cap]  # under the jaw and the skull base
     zone += [0] * (2 * len(cap))
-    pal = {0: SKIN, 1: SOCKET, 2: (0.30, 0.15, 0.13), 3: (0.70, 0.45, 0.39)}
+    pal = {0: SKIN, 1: SOCKET, 2: (0.30, 0.15, 0.13), 3: (0.70, 0.45, 0.39), 4: (0.60, 0.39, 0.32), 5: (0.84, 0.56, 0.45)}
     HEAD_GEO[:] = [verts, faces]
     ob = make("Head", verts, faces, lambda me: [pal[z] for z in zone])
     za = ob.data.attributes.new("zone", "INT", "FACE")  # read by head_paint
@@ -274,7 +282,30 @@ def hair(rings):
             faces.append([to, ti, idx[("i", b, k2)], idx[("o", b, k2)]])
         else:
             faces.append([idx[("o", b, k)], idx[("i", b, k)], idx[("i", b, k2)], idx[("o", b, k2)]])
+    lerp = lambda a, b, t: tuple(a[j] + (b[j] - a[j]) * t for j in range(3))
+    for k, t, ln, lean in LOCKS:
+        k2 = (k + 1) % n
+        c = lerp(lerp(outer[1][k], outer[1][k2], t), lerp(outer[2][k], outer[2][k2], t), 0.5)
+        rim = lerp(outer[3][k], outer[3][k2], t)
+        d = [rim[j] - c[j] for j in range(3)]
+        dl = math.sqrt(sum(x * x for x in d)) or 1.0
+        d = [x / dl for x in d]
+        nr = [c[0], 0.25 * math.hypot(c[0], c[2] + 0.01), c[2] + 0.01]  # out from the axis, a little up
+        nl = math.sqrt(sum(x * x for x in nr)) or 1.0
+        nr = [x / nl for x in nr]
+        sd = [d[1] * nr[2] - d[2] * nr[1], d[2] * nr[0] - d[0] * nr[2], d[0] * nr[1] - d[1] * nr[0]]
+        sl = math.sqrt(sum(x * x for x in sd)) or 1.0
+        sd = [x / sl for x in sd]
+        # broad and flat: lies on the helmet (a plank of hair, not a spike)
+        A = tuple(c[j] + sd[j] * LOCK_W - nr[j] * 0.003 for j in range(3))
+        B = tuple(c[j] - sd[j] * LOCK_W - nr[j] * 0.003 for j in range(3))
+        R = tuple(c[j] + nr[j] * 0.005 + d[j] * 0.006 for j in range(3))
+        T = tuple(c[j] + d[j] * ln + nr[j] * 0.0015 + (lean if j == 0 else 0.0) for j in range(3))
+        ia, ib, ir, it = len(verts), len(verts) + 1, len(verts) + 2, len(verts) + 3
+        verts += [A, B, R, T]
+        faces += [[ia, ir, it], [ir, ib, it], [ib, ia, it], [ia, ib, ir]]
     ob = make("Hair", verts, faces, lambda me: [HAIR_COL] * len(me.polygons))
+    ob["qa_parts"] = 1 + len(LOCKS)  # helmet + one closed wedge per lock
     ob["qa_asym"] = True
     ob["qa_tris_ok"] = True
     ob["paint_keep"] = True
@@ -372,6 +403,26 @@ def ears(rings):
     return ob
 
 
+def eyes(rings):
+    """Dark lid line in each eye socket: a thin closed slab just in front of the socket plane (between col 22
+    and col 48 at the eye row), outer end a little higher. Rigid on the head bone."""
+    i2, i3 = HCOLS.index(22), HCOLS.index(48)
+    vs, fs = [], []
+    q = [[0, 1, 2, 3], [7, 6, 5, 4], [0, 4, 5, 1], [1, 5, 6, 2], [2, 6, 7, 3], [3, 7, 4, 0]]
+    for sgn in (1, -1):
+        pts = []
+        for frac, y in ((0.12, -0.001), (0.78, 0.001), (0.78, -0.003), (0.12, -0.005)):
+            pa, pb = surface(rings, i2, y), surface(rings, i3, y)
+            p = [pa[j] + (pb[j] - pa[j]) * frac for j in range(3)]
+            pts.append((sgn * p[0], y, p[2] + 0.0018))
+        b = len(vs)
+        vs += pts + [(x, y, z - 0.004) for x, y, z in pts]
+        fs += [[b + i for i in f] for f in q]
+    ob = make("Eyes", vs, fs, lambda me: [(0.12, 0.08, 0.07)] * len(me.polygons))
+    ob["paint_keep"] = True
+    return ob
+
+
 def brows(rings):
     out = []
     for s, nm in ((1, "Eyebrow_L"), (-1, "Eyebrow_R")):
@@ -389,6 +440,7 @@ def main():
     hair(rings)
     ears(rings)
     brows(rings)
+    eyes(rings)
     out = os.path.abspath(a.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=out)

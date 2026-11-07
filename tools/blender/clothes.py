@@ -34,6 +34,8 @@ SETS = {
          "offset": lambda part, ring: 0.012},
     ],
 }
+# loft: the shirt has its own shape (garment_loft.py: drape, ease, collar rib, hem band, cuffs); pants / boots as basic
+SETS["loft"] = [{"name": "Shirt", "builder": "shirt_loft"}] + SETS["basic"][1:]
 
 
 def opts():
@@ -170,7 +172,12 @@ def main():
     mat = body.data.materials[0] if body.data.materials else None
     st, covers = {}, []
     for spec in SETS[a.set]:
-        _, s, cov = garment(body, rig, spec, mat)
+        if spec.get("builder") == "shirt_loft":
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            import garment_loft
+            _, s, cov = garment_loft.shirt(body, rig, mat)
+        else:
+            _, s, cov = garment(body, rig, spec, mat)
         st[spec["name"]] = s
         covers.append(cov)
     if not a.keep_skin:
