@@ -33,7 +33,11 @@ Pintu masuk semua catatan belajar. Kembali ke [Home](../Home.md).
 - [Torso](parts/torso.md): torso Blender v2 (cadangan, diganti badan F2)
 - [Tangan (jari)](parts/tangan.md): telapak 10 titik, 4 jari 3 ruas + jempol dari face buku jari (cara Rozi); v11 survivor **disetujui**
 - [Baju modular](parts/baju.md): kaos, cargo, bot dari face badan + Solidify, bobot badan, kulit tertutup dibuang; E4 cek tembus; survivor v13
-- [Kepala bidang besar](parts/kepala-bidang.md): kepala baru dari loft 10 kolom (rahang baji, hidung baji, rambut helm), gaya GIF referensi; v16b kepala bola + leher tusuk (base disetujui); v16c mulut, batang hidung, dagu lebar, rongga mata dalam; v16d rambut cambang + belakang; v16e telinga v13 dipasang
+- [Kaos loft](parts/baju-loft.md): baju dengan bentuk sendiri (jatuh lurus dari dada, kelonggaran, rib kerah, kelim, manset, lengan tumpang); survivor v17a
+- [Part DEADZONE](parts/game-deadzone.md): karakter untuk game zombie user (tiktok/): part kaku per tulang + instancing, kepala v16f dan badan bidang besar diekspor ke JSON game; viewer.html; lp1
+- [Studi referensi survivor jaket](ref-survivor-jaket.md): 5 video wireframe user (kepala, torso, lengan, kaki): segitiga rapat hanya di bentuk, lapisan bertepi tebal, detail menonjol (kantong, tali, sol), rambut shard
+- [Kepala v17 trace](parts/kepala-trace-v17.md): titik dibaca dari frame depan (x,y) + samping (z), segitiga manual sepanjang garis anatomi, rambut = massa tebal + duri tarik titik per zona (jambul, ubun, samping, tengkuk); 216 + 200 tris
+- [Kepala bidang besar](parts/kepala-bidang.md): kepala baru dari loft 10 kolom (rahang baji, hidung baji, rambut helm), gaya GIF referensi; v16b kepala bola + leher tusuk (base disetujui); v16c mulut, batang hidung, dagu lebar, rongga mata dalam; v16d rambut cambang + belakang; v16e telinga v13 dipasang; v16f detail (kelopak, lubang hidung, rona, helai)
 - [Rig game](parts/rig.md): 52 tulang deform dari posisi sendi ref_body, bobot cincin (bukan bone heat), uji E4 8 pose; batas siku 110°, lutut 130° (bobot engsel)
 - [Telinga (ear)](parts/ear.md): gaya setengah hati dari referensi user; v13 **disetujui** (trace titik per titik dari gambar user, n-gon utuh)
 
@@ -44,8 +48,13 @@ Pintu masuk semua catatan belajar. Kembali ke [Home](../Home.md).
 
 ## Workflow
 - [Workflow Claude + Blender + Obsidian](claude-blender-workflow.md)
+- [Skill lowpoly-karakter](../skills/lowpoly-karakter/SKILL.md): ringkasan semua pelajaran (alur trace, gaya bidang besar, resep rambut, jebakan Blender, pipeline DEADZONE). Terpasang di `~/.claude/skills/lowpoly-karakter/`; kalau skill diubah, salin ulang ke sana.
 
-## Status sekarang (3 Nov 2026)
+## Status sekarang (7 Nov 2026)
+- **Kepala v17r** (`head_lp_v17.blend`): trace dua pandangan, rambut massa + duri satu aliran, celah telinga ditutup. Belum dipasang di game (`game_parts.py` masih pakai v16f).
+- Semua pelajaran dirangkum jadi skill `lowpoly-karakter` (`skills/`).
+
+## Status lama (3 Nov 2026)
 - Eyeless mid yang disetujui: pipeline collapse. Kandidat pengganti: **collapse_soft**.
 - **BASELINE kepala = template v7 (3 Nov)**: `output/head-game/template/head_baseline*.glb`. Riwayat: v6 disetujui untuk mulut; bibir, celah, sudut mulut, dan ujung hidung sudah terbaca; 918 tris, 26 sliver. **v7**: garis rahang, leher ramping, tengkuk mulus. Sisa: tepi gelap di samping hidung. **Update 3 Nov**: hidung bidang datar v2 (`TPL_NOSE=planes`, tidak mancung), badan quad v1 (`body_quad.py`) menggantikan badan F2 sebagai kandidat, viewer gerak `viewer/gerak.html` (menunggu penilaian). **Telinga v13 disetujui** (trace dari gambar user); baseline = kepala v7 + telinga v13 dibangun di atas baseline, menunggu penilaian.
 
