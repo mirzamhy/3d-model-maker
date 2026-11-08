@@ -279,15 +279,37 @@ def hair_flow(h):
     top/crown flows FORWARD to the face, tips up-forward and leaning to the character's left (parting);
     sides rise; back falls. Zones blend smoothly so neighbouring spikes stay almost parallel (no crossing)."""
     x, y, z = h
-    top = np.array([0.35, 0.45, 0.82])
-    side = np.array([np.sign(x) * 0.35, 0.9, -0.25])
-    back = np.array([0.1, -0.55, -0.83])
+    top = np.array(HP["top"], float)
+    if HP["mid"]:
+        top[0] = top[0] * (1 - HP["mid"]) + HP["mid"] * 0.8 * (np.sign(x) or 1.0)
+    side = np.array(HP["side"], float) * np.array([np.sign(x) or 1.0, 1, 1])
+    back = np.array(HP["back"], float)
     a = _smooth(y, 0.035, 0.075)
     b = _smooth(-z, 0.02, 0.07) * (1 - a)
     c = 1 - a - b
     f = a * top / np.linalg.norm(top) + b * back / np.linalg.norm(back) + c * side / np.linalg.norm(side)
     return f / np.linalg.norm(f)
 
+
+# hair style parameters (defaults = approved v17r); head_mix.py blends several sets per seed
+HP = {
+    "top": (0.35, 0.45, 0.82),        # flow of the top hair (x>0 = parting lean to the character's left)
+    "side": (0.35, 0.9, -0.25),        # side flow (x sign added)
+    "back": (0.1, -0.55, -0.83),       # back flow
+    "thick": (0.010, 0.016, 0.015, 0.012),   # mass: base, + crown, + side, + back
+    "lump": 0.44,                       # silhouette lumpiness
+    "spike": {"quiff": (0.048, 0.75), "crown": (0.042, 0.70), "side": (0.030, 0.55), "back": (0.022, 0.30)},
+    "nape": (0.017, 0.012),             # edge tooth length base + random
+    "keep": 1.0,                        # share of candidate spikes that are pulled
+    "mask_w": 1.0,      # mohawk: hair mass only where |x| < mask_w (m); 1.0 = everywhere
+    "cut_y": -1.0,      # undercut / fade: below this height (m) the mass is shaved to cut_k
+    "cut_k": 1.0,
+    "drop": (0.0, 0.0), # long hair: hair edge pulled down (side behind the ear, back) in m
+    "curl": 0.0,        # 0 straight flow .. 1 random direction per spike (curly / messy)
+    "mid": 0.0,         # 1 = middle parting (top flow splits left/right)
+    "tone": 0.0,        # 0 hair colour .. 1 skin colour (buzz cut / stubble reads half skin)
+}
+CUT = {}   # hair vertex index -> shaved factor (0 hair .. 1 skin), filled by build_hair for colouring
 
 CLUMPS = False   # secondary locks (v17m). Off: user preferred the clean big-plane mass with pulled spikes
 CLUMPS_MADE = [0]
@@ -394,6 +416,7 @@ def build_hair(head):
        crown row (up + back), front quiff (up + back), side flicks above/behind the ear (back), nape teeth (down);
        a picked point blocks its neighbours, so shards stay separate;
     4. skirt from the hair edge down to the skin, so the edge has a visible thickness."""
+    CUT.clear()
     zone = set()
     for n in HAIR_ZONE:
         x, y, z = to_m(*TRACE[n])
@@ -426,8 +449,9 @@ def build_hair(head):
         back = np.clip(-h[2] / 0.10, 0, 1)                 # 0 face side .. 1 back
         side = np.clip((abs(h[0]) - 0.03) / 0.04, 0, 1)  # 0 middle .. 1 temple / over the ear
         # colour turntable: side panels bulge out past the face (hair 1.45 x face width), back mass wider than the skull
-        lump = 0.78 + 0.44 * _hash(h * 7.7)       # lumpy mass: silhouette not smooth
-        t = lump * (0.010 + 0.016 * up + 0.015 * side * (1 - 0.4 * up) + 0.012 * back)
+        lump = 1.0 - HP["lump"] / 2 + HP["lump"] * _hash(h * 7.7)       # lumpy mass: silhouette not smooth
+        k0, k1, k2, k3 = HP["thick"]
+        t = lump * (k0 + k1 * up + k2 * side * (1 - 0.4 * up) + k3 * back)
         # thin out towards the side/back hair edge, so the hair lies on the skin round the ear
         # (a thick mass that stops at the edge made a hanging roof over the ear); the forehead fringe keeps its edge
         side_edge = [b for b in boundary if _hc(b.co)[2] < 0.04]
@@ -439,7 +463,14 @@ def build_hair(head):
         t *= 1.0 - 0.85 * ear_near(h)
         if v in boundary:
             t = 0.005 if h[2] > 0.04 else 0.002
+        cut = 0.0
+        if HP["mask_w"] < 1.0:
+            cut = max(cut, _smooth(abs(h[0]), HP["mask_w"], HP["mask_w"] + 0.012))
+        if HP["cut_y"] > -1.0:
+            cut = max(cut, (1 - _smooth(h[1], HP["cut_y"] - 0.006, HP["cut_y"] + 0.006)) * (1 - HP["cut_k"]))
+        t = t * (1 - cut) + 0.0015 * cut
         base[v] = (h, d, t)
+        CUT[v] = cut
     # skirt: the boundary copy stays on the skin
     ext = bmesh.ops.extrude_edge_only(bm, edges=[e for e in bm.edges if e.is_boundary])
     skirt = [v for v in ext["geom"] if isinstance(v, bmesh.types.BMVert)]
@@ -449,6 +480,23 @@ def build_hair(head):
         skin_of[best] = s
     for v, (h, d, t) in base.items():
         v.co = blender_co(h + d * t)
+    # long hair: the edge (and its skirt) is pulled down behind the ear front and at the back -> a hanging curtain
+    ds, db = HP["drop"]
+    shift = {}
+    if ds or db:
+        for b in boundary:
+            h = _hc(b.co)
+            if h[2] > 0.0 and h[1] > -0.06:
+                continue   # sideburn / fringe stay
+            w_back = _smooth(-h[2], 0.0, 0.06)
+            amt = ds * (1 - w_back) + db * w_back
+            amt *= 1 - CUT.get(b, 0.0)
+            out = np.array([np.sign(h[0]) * 0.25 * (1 - w_back), 0, -0.25 * w_back])
+            sh = np.array([0, -amt, 0]) + out * amt
+            b.co = blender_co(h + sh)
+            shift[b] = sh
+            if b in skin_of:
+                s = skin_of[b]; s.co = blender_co(_hc(s.co) + sh)
     # spikes
     picked, blocked = [], set()
     def kind(h):
@@ -472,11 +520,15 @@ def build_hair(head):
         k = kind(h)
         if k is None or v in blocked:
             continue
+        if CUT.get(v, 0.0) > 0.4:
+            continue   # no spikes on shaved parts
         if k == "nape" and v not in boundary:
             continue
         if k in ("nape", "side") and ear_near(h) > 0.3:
             continue   # no teeth / flicks right at the ear
         if k != "nape" and v in boundary:
+            continue
+        if _hash(h * 5.3) > HP["keep"]:
             continue
         picked.append((v, k))
         blocked.add(v)
@@ -490,25 +542,34 @@ def build_hair(head):
         if k == "nape":
             f = np.array([np.sign(h[0]) * 0.2, -0.85, -0.5])
             f = f - nn * np.dot(f, nn)                # tooth slides along the skin, does not stick out
-            pull = f / np.linalg.norm(f) * (0.017 + 0.012 * r) * (0.7 + 0.3 * m) - nn * 0.002
+            pull = f / np.linalg.norm(f) * (HP["nape"][0] + HP["nape"][1] * r) * (0.7 + 0.3 * m) - nn * 0.002
         else:
             f = hair_flow(h)
+            if HP["curl"]:
+                rnd = np.array([_hash(h * 6.1), _hash(h * 7.3), _hash(h * 8.7)]) * 2 - 1
+                f = f * (1 - HP["curl"]) + rnd / (np.linalg.norm(rnd) + 1e-9) * HP["curl"]
             f = f - nn * np.dot(f, nn)                 # along the surface ...
             f /= np.linalg.norm(f)
-            base_len, lift = {"quiff": (0.048, 0.75), "crown": (0.042, 0.70), "side": (0.030, 0.55),
-                              "back": (0.022, 0.30)}[k]
+            base_len, lift = HP["spike"][k]
             ln = base_len * (0.8 + 0.4 * r) * m
             if k in ("quiff", "crown"):   # shorter towards the sides of the head: no lone horn on the corner
                 ln *= 1.0 - 0.45 * _smooth(abs(h[0]), 0.025, 0.07)
             up = nn if k in ("side", "back") else (0.35 * nn + np.array([0, 1.0, 0]))
             up = up / np.linalg.norm(up)              # top spikes rise up, not out sideways (no horns)
             pull = (f + up * lift) * ln                # ... and lifted off it, so tips break the silhouette
-        v.co = blender_co(h + d * t + pull)
+        v.co = blender_co(h + d * t + pull + shift.get(v, 0.0))
         if v in skin_of:   # nape tooth: its skirt point follows, so the tooth keeps its thickness
             s = skin_of[v]
             s.co = blender_co(_hc(s.co) + pull * 0.85)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     shade = add_clumps(bm) if CLUMPS else {}
+    bm.verts.index_update()
+    cut_idx = {v.index: c for v, c in CUT.items() if v.is_valid}
+    for s_ in skirt:
+        if s_.is_valid and s_.index not in cut_idx:
+            src = [b for b, sk in skin_of.items() if sk is s_]
+            cut_idx[s_.index] = CUT.get(src[0], 0.0) if src else 0.0
+    CUT.clear(); CUT.update(cut_idx)
     me = bpy.data.meshes.new("Hair"); bm.to_mesh(me); bm.free()
     a = me.attributes.new("Col", "FLOAT_COLOR", "FACE")
     for i, d_ in enumerate(a.data):
@@ -537,4 +598,5 @@ def main():
     print("SAVED", a.out)
 
 
-main()
+if __name__ == "__main__":
+    main()
