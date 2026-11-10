@@ -17,7 +17,12 @@ OUT = os.path.join(ROOT, "output", "ref", TAG)
 # view boxes (x0, x1, y0, y1) in image pixels, y from the top
 VIEWS = {"front": (10, 330, 95, 430), "right": (345, 445, 95, 430), "back": (440, 745, 95, 430),
          "left": (740, 830, 95, 430)}  # bottom stops above the view labels
-THRESH = 0.07
+if os.environ.get("REF_VIEWS"):   # other sheets: JSON {"front": [x0, x1, y0, y1], ...}
+    VIEWS = {k: tuple(v) for k, v in json.loads(os.environ["REF_VIEWS"]).items()}
+THRESH = float(os.environ.get("REF_THRESH", "0.07"))  # 0.18 for sheets with a soft floor shadow
+THRESH_TOP = float(os.environ["REF_THRESH_TOP"]) if os.environ.get("REF_THRESH_TOP") else None
+ARM_COL = int(os.environ.get("REF_ARM_COL", "45"))  # px from the crop centre: THRESH_TOP only further out (arms)
+MAX_HOLE = int(os.environ.get("REF_MAX_HOLE", "1000000"))  # px; bigger enclosed gaps stay background
 
 
 def load():
@@ -31,6 +36,16 @@ def mask_of(a, box):
     c = a[y0:y1, x0:x1].mean(2)
     bg = np.median(np.concatenate([c[:, :3].ravel(), c[:, -3:].ravel()]))
     m = np.abs(c - bg) > THRESH
+    if THRESH_TOP is not None:
+        # light skin on a white sheet: the high threshold (floor shadow) ate 1-1.5 cm off each arm edge (arms 25-30 %
+        # too thin). Low threshold everywhere above the floor band at the crop bottom.
+        # Only the arm zone: columns outside the trunk, upper 70 % of the crop (lower down the low threshold read the
+        # shadow between the legs as body: crotch 0.77 -> 0.665 m)
+        top = np.abs(c - bg) > THRESH_TOP
+        H_, W_ = c.shape
+        top[int(0.7 * H_):] = False
+        top[:, abs(np.arange(W_) - W_ / 2) < ARM_COL] = False
+        m |= top
     # drop specks: keep pixels with >= 2 masked neighbours
     n = sum(np.roll(np.roll(m, dy, 0), dx, 1) for dy in (-1, 0, 1) for dx in (-1, 0, 1))
     m = m & (n >= 3)
@@ -48,7 +63,29 @@ def mask_of(a, box):
         if (g == bg_).all():
             break
         bg_ = g
-    return ~bg_
+    # only small holes are filled (eyes, dark hair); a big enclosed gap is background (legs closed off at the soles by
+    # a contact shadow on the female sheet)
+    holes = ~bg_ & ~m
+    keep = np.zeros_like(m)
+    seen = np.zeros_like(m)
+    from collections import deque
+    for y0, x0 in zip(*np.nonzero(holes)):
+        if seen[y0, x0]:
+            continue
+        comp, q = [], deque([(y0, x0)])
+        seen[y0, x0] = True
+        while q:
+            y, x = q.popleft()
+            comp.append((y, x))
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                yy, xx = y + dy, x + dx
+                if 0 <= yy < m.shape[0] and 0 <= xx < m.shape[1] and holes[yy, xx] and not seen[yy, xx]:
+                    seen[yy, xx] = True
+                    q.append((yy, xx))
+        if len(comp) > MAX_HOLE:
+            for y, x in comp:
+                keep[y, x] = True
+    return ~bg_ & ~keep
 
 
 def intervals(row):
@@ -77,6 +114,8 @@ def front_landmarks(m):
     # crotch: first body pixel going up from the bottom on the centre column
     col = m[:, xi]
     y = bot
+    while y > bot - 0.04 * (bot - top) and col[y]:
+        y -= 1   # contact shadow between the soles (female sheet): skip it, the gap between the legs is above
     while y > top and not col[y]:
         y -= 1
     crotch = y
@@ -86,7 +125,8 @@ def front_landmarks(m):
         a, b = containing(m[y], xi) or (xi, xi + 1)
         widths.append((y, a, b))
     armpit = None
-    for (y, a, b), (y2, a2, b2) in zip(widths, widths[1:]):
+    step = int(os.environ.get("REF_ARMPIT_STEP", "1"))  # rows compared; 3 for a sloped sleeve (female sheet)
+    for (y, a, b), (y2, a2, b2) in zip(widths, widths[step:]):
         if y > crotch - 0.15 * (bot - top):
             continue  # the pelvis widening above the crotch is not the armpit
         if (b2 - xi) > 1.6 * (b - xi) + 4:

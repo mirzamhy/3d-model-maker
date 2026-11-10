@@ -11,7 +11,7 @@ ROOT = r"C:\Mirza Personal\model 3d maker"
 SRC = os.path.join(ROOT, os.environ["CMP_SRC"])
 TAG = os.environ.get("CMP_TAG", "cmp")
 REF = os.environ.get("REF_TAG", "survivor")
-IMG = os.path.join(ROOT, "notes/attachments/ref/survivor_sheet.webp")
+IMG = os.path.join(ROOT, os.environ.get("REF_IMG", "notes/attachments/ref/survivor_sheet.webp"))
 HEIGHT = float(os.environ.get("REF_HEIGHT", "1.78"))
 SCALE = 2  # output pixels per reference pixel
 
