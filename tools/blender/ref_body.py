@@ -38,7 +38,8 @@ TRUNK_EXP = 2.0 / float(os.environ.get("RB_TRUNK_ROUND", os.environ.get("RB_ROUN
 S = HEIGHT / 1.729  # stature ratio to F2 (prior sizes)
 ARM_DEPTH = 0.95  # arm front/back half depth = this x vertical half thickness (F2 prior)
 FOOT_BOX = 0.5  # superellipse exponent for foot sections (n = 4: boxy)
-HAIR = 0.035  # hair above the skull at the crown (m), the template head fits under it
+ARMPIT_X = float(os.environ.get("RB_ARMPIT_X", "0"))  # m; real armpit when the sheet's sleeves hide it (0: measured)
+HAIR = float(os.environ.get("RB_HAIR", "0.035"))  # hair above the skull at the crown (m); female sheet: + the bun
 COLS = Q.COLS
 HAND_ANG = [0, 21, 73, 107, 159, 180, 201, 253, 287, 339]  # palm ring: 8-ring with both side points split;
 # angles chosen so the 4 knuckle faces are equally wide after the boxy superellipse (|sin a|^(2/3) = 0.5, 0.97)
@@ -150,6 +151,11 @@ def landmarks(sil):
     cand = [t for t in arm if L["tip"] - 0.25 * S < t[0] < L["tip"] - 0.13 * S]
     L["wrist"] = min(cand, key=lambda t: t[1])[0]
     L["arm_axis"] = arm
+    if ARMPIT_X:
+        # clothed sheet (female: T-shirt): the measured "armpit" is the sleeve edge, so the shoulders came out as wide
+        # as the sleeves (0.49 m) and the head looked small. The real armpit goes in; inside the sleeve the arm keeps
+        # the thickness measured just past the old armpit (body_inset.py then trims it to the bare arm).
+        L["sleeve_x"], L["armpit_x"] = L["armpit_x"], ARMPIT_X
     return L
 
 
@@ -210,7 +216,14 @@ def build(sil, L, head_ring):
     # arm root
     x_root = L["armpit_x"] + 0.015
     axis_y = lambda x: float(np.interp(x, [t[0] for t in L["arm_axis"]], [t[2] for t in L["arm_axis"]]))
-    rb, rt = sil.arm_col(x_root, axis_y(x_root))
+    def arm_tb(x):
+        """Arm (bottom, top) at x; inside a sleeve (RB_ARMPIT_X) the thickness just outside the old armpit."""
+        if "sleeve_x" in L and x < L["sleeve_x"] + 0.02:
+            xs_ = L["sleeve_x"] + 0.02
+            b0, t0 = sil.arm_col(xs_, axis_y(xs_))
+            return axis_y(x) - (t0 - b0) / 2, axis_y(x) + (t0 - b0) / 2
+        return sil.arm_col(x, axis_y(x))
+    rb, rt = arm_tb(x_root)
     # trunk rows
     y_cr = L["crotch"] + 0.018
     below = [L["armpit_y"] - k * (L["armpit_y"] - (L["crotch"] + 0.09)) for k in (0.12, 0.34, 0.55, 0.76, 1.0)]
@@ -256,7 +269,7 @@ def build(sil, L, head_ring):
     xs = [x_root] + [joint + k * (L["wrist"] - joint) for k in (0.2, 0.4, 0.5, 0.55, 0.6, 0.75, 0.9)] + [L["wrist"]]
     pts, tans, dims = [], [], []
     for x in xs:
-        b_, t_ = sil.arm_col(x, axis_y(x))
+        b_, t_ = arm_tb(x)
         pts.append(np.array([x, (b_ + t_) / 2, z_arm]))
         dims.append((t_ - b_) / 2)
     for i in range(len(pts)):

@@ -36,6 +36,25 @@ SETS = {
 }
 # loft: the shirt has its own shape (garment_loft.py: drape, ease, collar rib, hem band, cuffs); pants / boots as basic
 SETS["loft"] = [{"name": "Shirt", "builder": "shirt_loft"}] + SETS["basic"][1:]
+# female survivor f2 (notes/parts/survivor-cewek.md): fitted olive tee with a short sleeve, brown cargo, grey rubber
+# boots. Shirt heights from the female sheet (armpit 1.254, bust 1.19, hem 0.93), arm root x 0.246.
+SETS["loft_f"] = [{"name": "Shirt", "builder": "shirt_loft", "shirt": dict(
+    hem_z=0.94, chest_z=1.20, armpit_z=1.254, waist_z=1.12, belly_z=1.02, fit=0.75,
+    shoulder_ease=0.006, chest_ease=0.010, belly_ease=0.018, hem_ease=0.026,
+    sleeve_x=(0.14, 0.25, 0.29, 0.315, 0.335), sleeve_ease=(0.0, 0.016, 0.014, 0.014),
+    colour=(0.40, 0.45, 0.28), band=(0.34, 0.38, 0.24))}] +     [dict(SETS["basic"][1], colour=(0.36, 0.26, 0.17),
+          # baggy cargo: body_inset.py took 2.5-3.5 cm off the carved legs, the trousers put the volume back
+          # v1 0.027 on the thigh read as riding breeches: thigh 0.014, knee 0.016, bunch above the boot 0.022
+          offset=lambda part, ring: 0.007 if part != LEG else (0.008 if ring >= 7 else 0.022 if ring == 6
+                                                              else 0.016 if 3 <= ring <= 5 else 0.014),
+          bump=lambda part, ring, p: 0.022 if part == LEG and ring in (1, 2) and p.normal.x * p.center.x > 0
+          and abs(p.normal.x) > 0.6 else 0.0),
+     dict(SETS["basic"][2], colour=(0.33, 0.33, 0.32), sole=(0.16, 0.16, 0.15), offset=lambda part, ring: 0.016)]
+
+# f3: real armpit x 0.16 (ref_body RB_ARMPIT_X): the sleeve starts at the shoulder and ends where the sheet's sleeve
+# ends (x ~0.24), not 9 cm further out
+SETS["loft_f3"] = [{"name": "Shirt", "builder": "shirt_loft", "shirt": dict(
+    SETS["loft_f"][0]["shirt"], sleeve_x=(0.10, 0.17, 0.20, 0.225, 0.242), fit=0.92)}] + SETS["loft_f"][1:]
 
 
 def opts():
@@ -175,7 +194,7 @@ def main():
         if spec.get("builder") == "shirt_loft":
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             import garment_loft
-            _, s, cov = garment_loft.shirt(body, rig, mat)
+            _, s, cov = garment_loft.shirt(body, rig, mat, spec.get("shirt"))
         else:
             _, s, cov = garment(body, rig, spec, mat)
         st[spec["name"]] = s
