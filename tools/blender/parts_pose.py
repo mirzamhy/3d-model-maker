@@ -71,6 +71,7 @@ def main():
     ap.add_argument("--close", default="")
     ap.add_argument("--arm", default="")
     ap.add_argument("--hip", default="")
+    ap.add_argument("--knee", default="")
     a = ap.parse_args(argv)
     rig = next(o for o in bpy.data.objects if o.type == "ARMATURE")
     for o in bpy.data.objects:
@@ -136,6 +137,17 @@ def main():
             for ang in (0, 90, 180, 230):
                 tiles.append(shot(c, ang, 0.8))
         hm.save_sheet(tiles, 4, os.path.abspath(a.hip))
+    if a.knee:
+        # left knee: front, side, back, 3/4
+        sc.render.resolution_x = sc.render.resolution_y = 560
+        tiles = []
+        for name in ("relaxed", "walk", "crouch"):
+            pose(rig, name)
+            explode(rig, False)
+            c = rig.matrix_world @ rig.pose.bones["shin.L"].head
+            for ang in (0, 90, 180, 40):
+                tiles.append(shot(c, ang, 0.45))
+        hm.save_sheet(tiles, 4, os.path.abspath(a.knee))
     os.remove(tmp)
     print("SHEET", a.sheet)
 

@@ -296,6 +296,7 @@ for s_ in ("L", "R"):
                     (f"shin.{s_}", f"thigh.{s_}", f"shin.{s_}")]
 BALL_NEAR = 0.07
 BALL_LAT = math.radians(50)
+BALL_RINGS = tuple(int(x) for x in os.environ.get("CP_BALL_RINGS", "35,70").split(","))   # latitude of the rings above the equator; the pole ring is closed flat
 
 
 def ball_caps(ob, joints, taken=None):
@@ -360,17 +361,32 @@ def ball_caps(ob, joints, taken=None):
             rad.append(rv)
         rm = sum(r.length for r in rad) / len(rad)
         eq = [bm.verts.new(P + rv) for rv in rad]
-        mid = [bm.verts.new(P + rv * math.cos(BALL_LAT) + a * rv.length * math.sin(BALL_LAT)) for rv in rad]
-        tip = bm.verts.new(P + a * rm)
+        # rings toward the pole get rounder (radius blends to the mean), the pole is a flat n-gon: no spike tip
+        # (a single tip over an uneven cuff loop came out as a spike when the knee bent)
+        rings = [eq]
+        for lat in BALL_RINGS:
+            t = lat / 90.0
+            ring = []
+            for rv in rad:
+                r = rv.length + (rm - rv.length) * t
+                ring.append(bm.verts.new(P + rv.normalized() * r * math.cos(math.radians(lat))
+                                         + a * r * math.sin(math.radians(lat))))
+            rings.append(ring)
         new = []
         k = len(loop)
         for i in range(k):
             j = (i + 1) % k
-            for q in ((loop[i], loop[j], eq[j], eq[i]), (eq[i], eq[j], mid[j], mid[i]), (mid[i], mid[j], tip)):
+            quads = [(loop[i], loop[j], eq[j], eq[i])]
+            quads += [(r0[i], r0[j], r1[j], r1[i]) for r0, r1 in zip(rings, rings[1:])]
+            for q in quads:
                 try:
                     new.append(bm.faces.new(q))
                 except ValueError:
                     pass
+        try:
+            new.append(bm.faces.new(rings[-1]))
+        except ValueError:
+            pass
         for f in new:
             fc = f.calc_center_median()
             out = fc - P - a * min(0.0, (fc - P).dot(a))
