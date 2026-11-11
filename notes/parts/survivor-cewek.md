@@ -304,3 +304,15 @@ bola. 5984 tris. QA: `survivor_f2i_knee.png`, `survivor_f2i_arm.png`, `survivor_
 
 Pelajaran: sendi engsel part kaku tidak butuh bola; cukup bentuk yang simetris putar terhadap sumbu engsel.
 Sisa: garis tipis di depan lutut saat jalan.
+
+## Variasi v2 (2026-11-11)
+
+User: "coba bikin variasi lain yang cewek". Badan dari lembar referensi yang sama (proporsi tetap), yang beda:
+- Kepala (`head_female.py --variant v2`): kuncir kuda tinggi (simpul di belakang ubun + ekor 6 sisi meruncing, 5 cincin),
+  rambut hitam (0.15, 0.12, 0.10), pipi sedikit lebih penuh dan dagu lebih bulat (offset `VARIANTS["v2"]["face"]`),
+  kulit sawo matang (tone 0.72, 0.67, 0.64). Tanpa helai depan garis rambut kotak terbaca cowok: helai depan dipakai.
+- Kulit badan: `head_paint` env `PAINT_TONE` (kalikan semua warna kulit).
+- Baju `clothes.py --set loft_f_v2`: kaos merah bata, jins biru gelap lebih pas tanpa saku kargo, bot hitam.
+- Pipa: `HEAD=.../head_f2vn.blend PAINT_TONE=0.72,0.67,0.64 SET=loft_f_v2 INSET="" T=fv2 bash f3.sh`
+  (REF_THRESH_TOP=0.05 REF_ARM_COL=80), lalu `cut_rigid.py`. 5990 tris.
+- QA: `female_head_v2var.png`, `survivor_fv2_cmp.png`, `survivor_fv2_parts.png`, `survivor_fv2_head.png`.
