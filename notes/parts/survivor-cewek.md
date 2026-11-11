@@ -274,3 +274,17 @@ terluar (`ball_caps(..., taken)`: bot, celana, kaos, kulit; baju punya dua lapis
 QA: `survivor_f2g_parts.png`, `survivor_f2g_hip.png`, `survivor_f2g_arm.png`.
 
 Sisa: ujung bola lutut runcing saat jongkok 120°; lubang kecil kulit di sisi ujung kaos saat membungkuk.
+
+## f2h: lutut bulat (2026-11-11)
+
+Keluhan: lutut runcing saat jongkok (user: "lanjut rapikan lutut").
+
+Penyebab: bola sendi = satu cincin di 50° lalu kerucut ke satu titik ujung. Lingkar celana di lutut tidak bulat
+(pusatnya bukan di titik putar), jadi kerucutnya jadi duri saat lutut ditekuk 120°.
+
+Perbaikan (`cut_parts.ball_caps`, dipakai `cut_rigid`): cincin di `BALL_RINGS` (35°, 70°), jari-jari tiap cincin
+makin ke kutub makin mendekati rata-rata (bulat), kutub ditutup n-gon datar, tanpa titik ujung. Uji satu cincin 45°:
+5512 tris tapi lutut jongkok kotak; dua cincin dipakai, 5984 tris. `parts_pose --knee`: close-up lutut kiri.
+QA: `survivor_f2h_knee.png`, `survivor_f2h_parts.png`.
+
+Sisa: saat jalan (lutut 50°) bagian bawah paha sedikit menonjol seperti bibir di depan lutut.
