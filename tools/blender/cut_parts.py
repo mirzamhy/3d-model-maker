@@ -103,27 +103,42 @@ def set_chain(rig):
         cuts = [(0.0, f"upperArm.{s}"), ((mw @ b[f"forearm.{s}"].head_local - o).dot(ax), f"forearm.{s}"),
                 ((mw @ b[f"hand.{s}"].head_local - o).dot(ax), f"hand.{s}")]
         CHAIN[s] = (o, ax, cuts)
-        HIP_Z[s] = mw @ b[f"thigh.{s}"].head_local
 
 
-HIP_Z = {}
-HIP_FRONT, HIP_BACK, HIP_SIDE = 0.02, 0.09, 0.04
-HIP_R = float(os.environ.get("CP_HIP_R", "0.075"))   # pelvis half width at the pivot (x 0.197) - pivot x 0.114 = 0.083
+# user sketch (2026-11-10): pelvis (10) is a narrow briefs band, V down to the crotch; the thighs (11/12) start right
+# under it and carry the hip side and the buttock. The cut follows the briefs line: crotch height in the middle,
+# rising to HIP_SIDE_Z at the hip side. The thigh above its pivot becomes a dome around the pivot (as the shoulder).
+HIP_CROTCH = float(os.environ.get("CP_HIP_CROTCH", "0.77"))
+HIP_SIDE_Z = float(os.environ.get("CP_HIP_SIDE_Z", "0.80"))
+HIP_SIDE_X = 0.15
 
 
 def leg_part(best, c):
-    """Pelvis / thigh face: above the hip pivot = pelvis, below = thigh. The skin weights let the thigh reach the
-    waist (z 0.86, pivot 0.79): the buttock and hip side then turned with the thigh and folded out in a crouch."""
+    """Pelvis / thigh face by the briefs line. The skin weights alone let the thigh reach the waist unevenly; the
+    earlier shorts cut (pelvis hanging to the buttock fold) looked like a skirt and the thigh like a broken stub."""
     if best not in ("pelvis", "thigh.L", "thigh.R"):
         return best
     s = "L" if c.x > 0 else "R"
-    P = HIP_Z[s]
-    # sloped cut (action figure shorts): crotch level in front, down to the buttock fold at the back, a little lower
-    # on the hip side; the buttock stays on the pelvis, the thigh comes out of it as a ball
-    back = min(1.0, max(0.0, (c.y - P.y) / 0.08))
-    side = min(1.0, max(0.0, (abs(c.x) - abs(P.x)) / 0.08))
-    zc = P.z - HIP_FRONT - (HIP_BACK - HIP_FRONT) * back - HIP_SIDE * side
+    k = min(1.0, abs(c.x) / HIP_SIDE_X)
+    zc = HIP_CROTCH + (HIP_SIDE_Z - HIP_CROTCH) * k
     return "pelvis" if c.z > zc else f"thigh.{s}"
+
+
+def dome_axis(ob, P, a):
+    """Vertices above the pivot along the thigh axis a (pointing down the leg): onto a dome around the pivot, each at
+    its own distance from the axis. A dome turned about its centre keeps its shape, so the hip stays round."""
+    mw, mi = ob.matrix_world, ob.matrix_world.inverted()
+    n = 0
+    for v in ob.data.vertices:
+        w = mw @ v.co
+        d = w - P
+        ax = d.dot(a)
+        if ax >= 0 or d.length < 1e-6:
+            continue
+        r = (d - a * ax).length
+        v.co = mi @ (P + d.normalized() * r)
+        n += 1
+    return n
 
 
 def chain_part(best, c):
@@ -278,13 +293,12 @@ BALL_JOINTS = []   # (child bone, parent part, child part)
 for s_ in ("L", "R"):
     BALL_JOINTS += [(f"forearm.{s_}", f"upperArm.{s_}", f"forearm.{s_}"),
                     (f"hand.{s_}", f"forearm.{s_}", f"hand.{s_}"),
-                    (f"shin.{s_}", f"thigh.{s_}", f"shin.{s_}"),
-                    (f"thigh.{s_}", "pelvis", f"thigh.{s_}")]
+                    (f"shin.{s_}", f"thigh.{s_}", f"shin.{s_}")]
 BALL_NEAR = 0.07
 BALL_LAT = math.radians(50)
 
 
-def ball_caps(ob, joints):
+def ball_caps(ob, joints, taken=None):
     """Close each open loop near a joint (pivot P, unit axis a pointing out of this part) with a band to the joint's
     equator, one ring at BALL_LAT and a tip: a half ball. Returns the number of loops closed."""
     mi = ob.matrix_world.inverted()
@@ -297,7 +311,7 @@ def ball_caps(ob, joints):
     for e in bnd:
         for v in e.verts:
             adj.setdefault(v, []).append(e)
-    seen, n = set(), 0
+    seen, n, cand = set(), 0, []
     for e0 in bnd:
         if e0 in seen:
             continue
@@ -314,13 +328,26 @@ def ball_caps(ob, joints):
         if len(loop) < 3:
             continue
         c = sum((x.co for x in loop), Vector()) / len(loop)
-        hit = [(P, a, rmax) for P, a, near, rmax in loc if (c - P).length < near]
+        hit = [i for i, (P, a, near, rmax) in enumerate(loc) if (c - P).length < near]
         if os.environ.get("CP_DEBUG"):
             print("LOOP", ob.name, len(loop), [round((c - P).length, 3) for P, _, _, _ in loc],
                   [round((c - P).dot(a), 3) for P, a, _, _ in loc])
         if not hit:
             continue
-        P, a, rmax = hit[0]
+        P, a = loc[hit[0]][:2]
+        r_out = sum((x.co - P - a * (x.co - P).dot(a)).length for x in loop) / len(loop)
+        cand.append((hit[0], r_out, loop, e0))
+    # one ball per joint: the outermost loop (clothes have an inner and an outer shell; the skin sits under them)
+    best = {}
+    for ji, r_out, loop, e0 in cand:
+        if taken is not None and ji in taken:
+            continue
+        if ji not in best or r_out > best[ji][0]:
+            best[ji] = (r_out, loop, e0)
+    for ji, (_, loop, e0) in best.items():
+        if taken is not None:
+            taken.add(ji)
+        P, a, _, rmax = loc[ji]
         fcol = None
         if col is not None:
             fcol = tuple(e0.link_faces[0][col])
@@ -401,6 +428,11 @@ def main():
         for o in obs:
             if name == "neck" and o.name.endswith("Character"):
                 neck_sink(o)
+            if name.startswith("thigh"):
+                b = rig.data.bones[BONE_OF_PART[name]]
+                P = rig.matrix_world @ b.head_local
+                ax = (rig.matrix_world.to_3x3() @ (b.tail_local - b.head_local)).normalized()
+                print("HIP_DOME", o.name, dome_axis(o, P, ax))
             if name.startswith("upperArm"):
                 print("DOME", o.name, dome(o, piv[name[-1]], 1 if name.endswith("L") else -1))
             jt = []
@@ -408,9 +440,8 @@ def main():
                 b = rig.data.bones[cb]
                 P = rig.matrix_world @ b.head_local
                 ax = (rig.matrix_world.to_3x3() @ (b.tail_local - b.head_local)).normalized()
-                hip = cb.startswith("thigh")
-                near, rmax = (0.13, HIP_R) if hip else (BALL_NEAR, 1.0)
-                if name == pp and not hip:   # pelvis bottom: one loop, flat cap
+                near, rmax = BALL_NEAR, 1.0
+                if name == pp:
                     jt.append((P, ax, near, rmax))
                 elif name == cp:
                     jt.append((P, -ax, near, rmax))
