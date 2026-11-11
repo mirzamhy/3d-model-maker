@@ -133,13 +133,15 @@ def joint_caps(name, J):
     j = J[s]
     a, sh = j["arm"], j["shin"]
     up = -j["thigh"]
+    # hinge axes (world, rest pose): knee and ankle bend about x, the elbow about z (forearm swings forward)
+    X, Z = Vector((1, 0, 0)), Vector((0, 0, 1))
     return {
-        "upperArm": [(j["shoulder"], -a, 0.08, 1.0), (j["elbow"], a, 0.07, 1.0)],
-        "forearm": [(j["elbow"], -a, 0.07, 1.0), (j["wrist"], a, 0.07, 1.0)],
+        "upperArm": [(j["shoulder"], -a, 0.08, 1.0), (j["elbow"], a, 0.07, 1.0, Z)],
+        "forearm": [(j["elbow"], -a, 0.07, 1.0, Z), (j["wrist"], a, 0.07, 1.0)],
         "hand": [(j["wrist"], -a, 0.07, 1.0)],
-        "thigh": [(j["hip"], up, 0.12, HIP_RMAX), (j["knee"], sh, 0.08, 1.0)],
-        "shin": [(j["knee"], -sh, 0.08, 1.0), (j["ankle"], sh, 0.08, ANKLE_RMAX)],
-        "foot": [(j["ankle"], -sh, 0.08, ANKLE_RMAX)],
+        "thigh": [(j["hip"], up, 0.12, HIP_RMAX), (j["knee"], sh, 0.08, 1.0, X)],
+        "shin": [(j["knee"], -sh, 0.08, 1.0, X), (j["ankle"], sh, 0.08, ANKLE_RMAX, X)],
+        "foot": [(j["ankle"], -sh, 0.08, ANKLE_RMAX, X)],
     }.get(kind, [])
 
 

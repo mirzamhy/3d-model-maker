@@ -303,7 +303,9 @@ def ball_caps(ob, joints, taken=None):
     """Close each open loop near a joint (pivot P, unit axis a pointing out of this part) with a band to the joint's
     equator, one ring at BALL_LAT and a tip: a half ball. Returns the number of loops closed."""
     mi = ob.matrix_world.inverted()
-    loc = [(mi @ P, (mi.to_3x3() @ a).normalized(), near, rmax) for P, a, near, rmax in joints]
+    m3 = mi.to_3x3()
+    loc = [(mi @ jt[0], (m3 @ jt[1]).normalized(), jt[2], jt[3], (m3 @ jt[4]).normalized() if len(jt) > 4 else None)
+           for jt in joints]
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     col = bm.faces.layers.float_color.get("Col")
@@ -329,10 +331,9 @@ def ball_caps(ob, joints, taken=None):
         if len(loop) < 3:
             continue
         c = sum((x.co for x in loop), Vector()) / len(loop)
-        hit = [i for i, (P, a, near, rmax) in enumerate(loc) if (c - P).length < near]
+        hit = [i for i, (P, a, near, rmax, _) in enumerate(loc) if (c - P).length < near]
         if os.environ.get("CP_DEBUG"):
-            print("LOOP", ob.name, len(loop), [round((c - P).length, 3) for P, _, _, _ in loc],
-                  [round((c - P).dot(a), 3) for P, a, _, _ in loc])
+            print("LOOP", ob.name, len(loop), [round((c - P).length, 3) for P, *_ in loc])
         if not hit:
             continue
         P, a = loc[hit[0]][:2]
@@ -348,7 +349,7 @@ def ball_caps(ob, joints, taken=None):
     for ji, (_, loop, e0) in best.items():
         if taken is not None:
             taken.add(ji)
-        P, a, _, rmax = loc[ji]
+        P, a, _, rmax, X = loc[ji]
         fcol = None
         if col is not None:
             fcol = tuple(e0.link_faces[0][col])
@@ -366,11 +367,19 @@ def ball_caps(ob, joints, taken=None):
         rings = [eq]
         for lat in BALL_RINGS:
             t = lat / 90.0
+            cl, sl = math.cos(math.radians(lat)), math.sin(math.radians(lat))
             ring = []
             for rv in rad:
-                r = rv.length + (rm - rv.length) * t
-                ring.append(bm.verts.new(P + rv.normalized() * r * math.cos(math.radians(lat))
-                                         + a * r * math.sin(math.radians(lat))))
+                if X is not None:
+                    # hinge (knee, elbow, ankle): each point swings on a circle around the hinge axis, so the cap is a
+                    # surface of revolution about that axis and keeps its outline at any bend. A round ball over an
+                    # oval cuff (knee 5.7 x 9.6 cm) turned its long side out as a lip when the knee bent.
+                    h = rv.dot(X)
+                    q = rv - X * h
+                    ring.append(bm.verts.new(P + X * h + q * cl + a * q.length * sl))
+                else:
+                    r = rv.length + (rm - rv.length) * t
+                    ring.append(bm.verts.new(P + rv.normalized() * r * cl + a * r * sl))
             rings.append(ring)
         new = []
         k = len(loop)
