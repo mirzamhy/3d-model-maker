@@ -23,6 +23,9 @@ LIP = (0.66, 0.36, 0.33)
 MOUTH = (0.22, 0.10, 0.09)  # inside the mouth line
 NECK = (0.74, 0.53, 0.41)
 BROW = (0.16, 0.10, 0.06)
+# skin tone variant (female v2: darker): every skin colour times PAINT_TONE (r, g, b)
+_TONE = tuple(float(x) for x in os.environ.get("PAINT_TONE", "1,1,1").split(","))
+SKIN, SOCKET, WARM, LIP, NECK = (tuple(c * t for c, t in zip(col, _TONE)) for col in (SKIN, SOCKET, WARM, LIP, NECK))
 MOUTH_BAND = (0.30, 0.15, 0.13)  # head_planes: recessed mouth band
 LIP_LOW = (0.70, 0.45, 0.39)  # head_planes: lower lip
 NOSTRIL = (0.60, 0.39, 0.32)  # head_planes: nostril
