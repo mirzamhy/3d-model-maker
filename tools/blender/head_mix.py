@@ -304,4 +304,5 @@ def main():
         print("REPORT seed %d flipped %d  %s" % r)
 
 
-main()
+if __name__ == "__main__":
+    main()
