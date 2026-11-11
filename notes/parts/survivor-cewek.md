@@ -288,3 +288,19 @@ makin ke kutub makin mendekati rata-rata (bulat), kutub ditutup n-gon datar, tan
 QA: `survivor_f2h_knee.png`, `survivor_f2h_parts.png`.
 
 Sisa: saat jalan (lutut 50°) bagian bawah paha sedikit menonjol seperti bibir di depan lutut.
+
+## f2i: bibir lutut saat jalan (2026-11-11)
+
+Keluhan: "lanjut rapikan bibir lutut pas jalan".
+
+Penyebab (diukur): lingkar celana di lutut lonjong, jarak dari titik putar 5.7 sampai 9.6 cm (pusat tepat di titik
+putar). Bola mengikuti bentuk lonjong itu; lutut berputar di satu sumbu (engsel x), jadi sisi panjang bola ikut
+berputar keluar = bibir di depan lutut.
+
+Perbaikan: tutup sendi engsel = permukaan putar di sekitar sumbu engsel. Tiap titik lingkar diayun di lingkaran
+sekitar sumbu engsel (`P + X h + q cos + a |q| sin`), jadi garis luarnya tetap saat ditekuk. Sumbu: lutut dan
+pergelangan kaki x, siku z (lengan bawah mengayun ke depan dalam T-pose). Bahu, pinggul, pergelangan tangan tetap
+bola. 5984 tris. QA: `survivor_f2i_knee.png`, `survivor_f2i_arm.png`, `survivor_f2i_parts.png`.
+
+Pelajaran: sendi engsel part kaku tidak butuh bola; cukup bentuk yang simetris putar terhadap sumbu engsel.
+Sisa: garis tipis di depan lutut saat jalan.
