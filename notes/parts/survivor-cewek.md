@@ -207,3 +207,70 @@ terlihat gelap dari bawah saat badan membungkuk.
 
 Pelajaran:
 - Pinggul part kaku: bokong ikut pinggul, potongan miring (rendah di belakang). Bola paha dibatasi lebar soket.
+
+## f2e: bahu kembali miring (2026-11-11)
+
+Keluhan: "lengan dan bahu kok berbeda dari sebelumnya". Bahu f2b/f2c kotak, rata setinggi lengan; lengan kaos
+seperti balok terpisah. Sudah begitu di mesh utuh (bukan karena dipotong).
+
+Penyebab: ambang rendah `REF_THRESH_TOP` (dipakai untuk lengan sejak f2b) berlaku mulai 45 px dari tengah, jadi juga
+menangkap bayangan tipis latar di atas bahu. Celah leher-lengan terbaca penuh, pangkal lengan (`arm_col` di x_root)
+terukur setinggi bahu, baris trunk atas ikut naik: bahu rata.
+
+Perbaikan: `REF_ARM_COL=80` (ambang rendah hanya di luar ujung lengan kaos, lengan telanjang). Ukur ulang, bangun
+f2e (`SET=loft_f INSET="" T=f2e`). Bahu = f2, lengan telanjang r 0.0354 (f2 0.027, f2b 0.037), kubah bahu r 0.047.
+QA: `survivor_f2_f2b_f2e_shoulder.png`, `survivor_f2e_cmp.png`, `survivor_f2e_parts.png`.
+
+Pelajaran: ambang mask yang dilonggarkan untuk satu bagian harus dibatasi ke kolom bagian itu saja; cek baris
+tetangga (bahu) ikut berubah atau tidak.
+
+Catatan user soal sambungan: render referensi dan `survivor_f2_cmp` = satu mesh skinned, jadi menyatu. Part kaku
+per tulang (format game sekarang) selalu punya sambungan; paha-bokong paling kelihatan karena pinggul berputar besar.
+
+## f2e: pinggul-paha ikut sketsa user (2026-11-11)
+
+Keluhan: "pembuatan pahamu patah coba buat ulang ... yang awal itu konsepku jadi sesuaikan kembali".
+
+Penyebab: potongan f2c kebalikan dari sketsa. Pinggul menggantung seperti rok sampai lipatan bokong, paha masuk dengan
+bola kecil (r 0.075): saat jalan/jongkok rok diam, paha keluar dari bawahnya = terlihat patah.
+
+Sketsa (QA `images/24.jpg`): pinggul (10) = pita pinggang sempit, V ke selangkangan; paha (11/12) mulai tepat di bawahnya
+dan membawa sisi pinggul + bokong.
+
+Perbaikan (`cut_parts.py`):
+- `leg_part`: garis celana dalam, z selangkangan `HIP_CROTCH` 0.77 di tengah naik ke `HIP_SIDE_Z` 0.80 di |x| 0.15.
+  (0.835 terlalu tinggi: celana hanya punya cincin z 0.862 dan 0.788, sisi pinggang masuk paha, celah putih di samping.)
+- `dome_axis`: titik paha di atas titik putar (sepanjang sumbu paha) ke kubah di sekitar titik putar, seperti bahu.
+- Bola pinggul dihapus. 4344 tris. QA: `survivor_f2e_hip.png`, `survivor_f2e_parts.png`.
+
+Sisa: jongkok 100° tetap kotak di belakang (batas part kaku).
+
+## f2g: pemotong baru `cut_rigid.py` (2026-11-11)
+
+Keluhan: "coba carikan refrensi rig tubuh deh aku bingung dan potonganmu juga aneh".
+
+Referensi:
+- Karakter bersegmen PS1/N64: tiap bagian satu objek, satu tulang, tanpa weight paint; sambungan disembunyikan
+  dengan geometri tumpuk ([itch devlog](https://flynn-delta.itch.io/kit207-portfolio/devlog/565388/self-study-2-animation),
+  [Polycount](https://polycount.com/discussion/comment/2758265)). Ujung part mengecil dan tumpuk sedikit di sendi
+  ([OverScore](https://overscore.media/posts/low-poly-character-rigging-with-blender-and-mixamo)).
+- Roblox R15 (15 part kaku): tiap anggota badan tertutup sendiri (tutup bulat/datar), part boleh tumpuk
+  ([docs](https://create.roblox.com/docs/avatar/character-bodies.md)).
+- Action figure: pinggul = sendi bola; untuk berlutut perlu bola, bukan potongan lurus
+  ([Yakface](https://yakfaceforums.com/main/2019/01/06/hyper-articulated-hips/)).
+
+Tiga aturan: (1) bola di bahu dan pinggul (ujung anak setengah bola di titik putar, masuk ke induk); (2) engsel di
+siku, pergelangan, lutut, pergelangan kaki (kedua ujung setengah bola, tumpuk); (3) potong dengan bidang lurus lewat
+titik putar.
+
+Penyebab "aneh": `cut_parts.py` memilih part per face. Mesh baju kasar (celana hanya cincin z 0.862 dan 0.788 di
+pinggul) jadi garis potong mengikuti tepi face, zig-zag, bukan garis di titik putar.
+
+`cut_rigid.py`: `bisect_plane` lewat tiap titik putar (hanya face di zona sendi itu), part dari posisi geometris
+(bahu/siku/pergelangan sepanjang sumbu lengan, V celana dalam z 0.77 + 0.2|x|, lutut dan pergelangan kaki sepanjang
+sumbu tulang kering), kaos = badan, celana = pinggul (ujung kaos menutup pinggang). Satu bola per sendi dari lapisan
+terluar (`ball_caps(..., taken)`: bot, celana, kaos, kulit; baju punya dua lapis). Bola pergelangan kaki maks 5 cm
+(titik putar 9 cm di atas sol). Kepala/leher tetap dari `cut_parts`. 5552 tris.
+QA: `survivor_f2g_parts.png`, `survivor_f2g_hip.png`, `survivor_f2g_arm.png`.
+
+Sisa: ujung bola lutut runcing saat jongkok 120°; lubang kecil kulit di sisi ujung kaos saat membungkuk.
