@@ -72,6 +72,7 @@ def main():
     ap.add_argument("--arm", default="")
     ap.add_argument("--hip", default="")
     ap.add_argument("--knee", default="")
+    ap.add_argument("--angs", default="0,35", help="sheet view angles (deg), e.g. 160,215 for the back (gear)")
     a = ap.parse_args(argv)
     rig = next(o for o in bpy.data.objects if o.type == "ARMATURE")
     for o in bpy.data.objects:
@@ -97,7 +98,7 @@ def main():
         bpy.data.images.remove(img)
         return px
     tiles = []
-    for ang in (0, 35):
+    for ang in [float(x) for x in a.angs.split(",")]:
         for name in POSES:
             pose(rig, name)
             explode(rig, name == "explode")
