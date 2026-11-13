@@ -69,6 +69,12 @@ SETS["loft_f_v3"] = [{"name": "Shirt", "builder": "shirt_loft", "shirt": dict(
     dict(SETS["loft_f"][2], faces={LEG: (6, 13)}, colour=(0.30, 0.20, 0.12), sole=(0.10, 0.08, 0.07),
          offset=lambda part, ring: 0.012 if ring <= 9 else 0.016)]
 
+# female v4 (scavenger, gear.py adds pack / bandana / belt / pads): dark olive tee, grey cargo, brown boots
+SETS["loft_f_v4"] = [{"name": "Shirt", "builder": "shirt_loft", "shirt": dict(
+    SETS["loft_f"][0]["shirt"], colour=(0.30, 0.33, 0.22), band=(0.24, 0.27, 0.18))},
+    dict(SETS["loft_f"][1], colour=(0.30, 0.30, 0.29)),
+    dict(SETS["loft_f"][2], colour=(0.30, 0.20, 0.12), sole=(0.10, 0.08, 0.07))]
+
 # f3: real armpit x 0.16 (ref_body RB_ARMPIT_X): the sleeve starts at the shoulder and ends where the sheet's sleeve
 # ends (x ~0.24), not 9 cm further out
 SETS["loft_f3"] = [{"name": "Shirt", "builder": "shirt_loft", "shirt": dict(
