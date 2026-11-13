@@ -342,3 +342,25 @@ pelindung lutut, sarung tangan tanpa jari, kantong paha.
 
 Pelajaran: perlengkapan pada part kaku cukup ditempel ke part yang tepat; tidak perlu bobot. Pilih part yang paling
 sedikit bergerak relatif (bandana di torso, bukan neck: kepala menoleh tanpa menyeret kain).
+
+## Kepala cewek v3–v7 + detail rambut (2026-11-13)
+
+User: "perbanyak model muka cewe dan rambutnya kemudian warnanya dan perdetail sedikit rambutnya".
+`head_female.py --all <png> --out <folder>` membangun semua varian (`head_f_vN.blend`) + lembar 4 sudut.
+
+| varian | rambut | warna rambut | kulit (tone) | muka |
+|---|---|---|---|---|
+| v3 | bob sebatas rahang + poni 5 helai | auburn | terang 1.05 | bulat, pipi penuh |
+| v4 | panjang terurai sampai belikat, belah tengah | pirang kusam | 0.95 | panjang, tulang pipi tinggi |
+| v5 | satu kepang di punggung, ikat merah | hampir hitam | sawo 0.84 | pipi lebar, hidung kecil datar |
+| v6 | pixie undercut (samping dicukur, atas disapu + duri pendek) | abu ash | gelap 0.52 | rahang tegas |
+| v7 | kuncir dua rendah di belakang telinga | cokelat kastanye | terang hangat 0.98 | dagu kecil |
+
+Detail rambut (tetap bidang besar): `tube` dengan sudut cincin selang-seling menonjol (gumpalan helai, bidang terang/gelap),
+kepang = cincin digeser kiri-kanan + diputar, ikat rambut (v2, v5, v7), `curtain` untuk rambut terurai (kolom selang-seling
+menonjol, ujung bawah dipotong beda panjang), massa dasar diberi variasi warna per muka 0.93–1.05.
+Rambut 312–572 tris (v1 376).
+
+Pelajaran: ujung poni runcing terbaca gergaji; potong tumpul dengan tinggi sedikit beda. Kuncir yang menjauh dari leher
+terbaca sayap dari depan; gantung dekat leher di belakang telinga.
+QA: `female_heads_all.png`.
