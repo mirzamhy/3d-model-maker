@@ -326,3 +326,19 @@ User: "buat variasi baju yang lain". Kepala v1 (sanggul), badan sama, baju `clot
 - Bot tempur cokelat tinggi: LEG (6, 13), offset 0.012 di betis, 0.016 di kaki.
 - Pipa: `SET=loft_f_v3 INSET="" T=fv3 bash f3.sh` (REF_THRESH_TOP=0.05 REF_ARM_COL=80), lalu `cut_rigid.py`. 5600 tris.
 - QA: `survivor_fv3_cmp.png`, `survivor_fv3_parts.png`.
+
+## Variasi v4 scavenger + perlengkapan (2026-11-13)
+
+User: "yang modelnya lain coba cari di web apocalypse model atau apa". Referensi web (CGTrader / RenderHub / ArtStation
+"post apocalyptic female survivor"): yang berulang = tas punggung + tali bahu, bandana di leher, sabuk berkantong,
+pelindung lutut, sarung tangan tanpa jari, kantong paha.
+- Kepala v2 (kuncir kuda, kulit sawo matang), baju `loft_f_v4`: kaos zaitun gelap, kargo abu, bot cokelat.
+- `tools/blender/gear.py` (setelah `cut_rigid.py`): perlengkapan dari beberapa bidang besar, digabung ke part yang
+  membawanya (ikut tulangnya). Titik permukaan dari ray cast dari luar, didorong keluar + tebal dinding, ditutup
+  (`grid_shell`). Tas + tali + bandana di torso, sabuk + 2 kantong di pelvis, pelindung lutut + tali di shin,
+  kantong paha di thigh.R, sarung tangan = warna muka hand dari pergelangan sampai buku jari.
+- `parts_pose.py --angs 160,215`: lembar dari belakang.
+- 5990 + 944 tris perlengkapan = 6934. QA: `survivor_fv4_parts.png`, `survivor_fv4_back.png`.
+
+Pelajaran: perlengkapan pada part kaku cukup ditempel ke part yang tepat; tidak perlu bobot. Pilih part yang paling
+sedikit bergerak relatif (bandana di torso, bukan neck: kepala menoleh tanpa menyeret kain).
