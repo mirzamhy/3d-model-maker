@@ -316,3 +316,13 @@ User: "coba bikin variasi lain yang cewek". Badan dari lembar referensi yang sam
 - Pipa: `HEAD=.../head_f2vn.blend PAINT_TONE=0.72,0.67,0.64 SET=loft_f_v2 INSET="" T=fv2 bash f3.sh`
   (REF_THRESH_TOP=0.05 REF_ARM_COL=80), lalu `cut_rigid.py`. 5990 tris.
 - QA: `female_head_v2var.png`, `survivor_fv2_cmp.png`, `survivor_fv2_parts.png`, `survivor_fv2_head.png`.
+
+## Variasi baju v3 (2026-11-13)
+
+User: "buat variasi baju yang lain". Kepala v1 (sanggul), badan sama, baju `clothes.py --set loft_f_v3`:
+- Kaos arang lengan pendek lebih pendek (`sleeve_x` ujung 0.30, f2 0.335).
+- Celana pendek khaki sampai tengah paha: `faces` LEG (0, 2), offset paha 0.014, tanpa saku. Lutut dan betis telanjang
+  (kulit bekas `body_inset` sudah ramping, jadi tidak perlu ubah).
+- Bot tempur cokelat tinggi: LEG (6, 13), offset 0.012 di betis, 0.016 di kaki.
+- Pipa: `SET=loft_f_v3 INSET="" T=fv3 bash f3.sh` (REF_THRESH_TOP=0.05 REF_ARM_COL=80), lalu `cut_rigid.py`. 5600 tris.
+- QA: `survivor_fv3_cmp.png`, `survivor_fv3_parts.png`.
