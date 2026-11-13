@@ -364,3 +364,22 @@ Rambut 312–572 tris (v1 376).
 Pelajaran: ujung poni runcing terbaca gergaji; potong tumpul dengan tinggi sedikit beda. Kuncir yang menjauh dari leher
 terbaca sayap dari depan; gantung dekat leher di belakang telinga.
 QA: `female_heads_all.png`.
+
+## Kepala v3–v7 di badan (2026-11-14)
+
+User: "Pasang ke badan". Per varian: `head_combine.py` (kepala + tusuk leher head_lp_v6) lalu `f3.sh` dengan
+`HEAD=output/head-game/female_variants/head_f_vNn.blend PAINT_TONE=<tone varian> SET=<baju> INSET="" T=fhvN`, lalu
+`cut_rigid.py` (v5 juga `gear.py`). Skrip: `$TEMP/heads_body.sh`.
+
+| karakter | baju | tris |
+|---|---|---|
+| fhv3 bob | loft_f_v2 (kaos merah bata, jins) | 6154 |
+| fhv4 panjang | loft_f (zaitun, kargo cokelat, bot karet) | 6142 |
+| fhv5 kepang | loft_f_v4 + gear | 7002 |
+| fhv6 pixie | loft_f_v3 (kaos arang, celana pendek) | 5536 |
+| fhv7 kuncir dua | loft_f_v4 tanpa gear | 6096 |
+
+Rambut (termasuk rambut panjang dan kepang) ikut part `head`. RB_HAIR tetap 0.115 untuk semua, supaya ukuran kepala sama.
+`parts_lineup.py`: satu kolom per karakter, pose relaxed, `--zoom 0.62` untuk close-up kepala.
+QA: `survivor_f_heads_lineup.png`, `survivor_f_heads_close.png`.
+Sisa: kuncir dua (v7) tertutup kepala dari depan/belakang (simetris, dicek); ujung kepang v5 tertutup tas.
