@@ -59,6 +59,16 @@ SETS["loft_f_v2"] = [{"name": "Shirt", "builder": "shirt_loft", "shirt": dict(
          bump=lambda part, ring, p: 0.0),
     dict(SETS["loft_f"][2], colour=(0.12, 0.11, 0.11), sole=(0.06, 0.06, 0.06))]
 
+# female v3: charcoal tee with a short cap sleeve, khaki shorts to mid thigh (bare knee and shin), tall brown
+# combat boots up the shin
+SETS["loft_f_v3"] = [{"name": "Shirt", "builder": "shirt_loft", "shirt": dict(
+    SETS["loft_f"][0]["shirt"], sleeve_x=(0.14, 0.25, 0.27, 0.285, 0.30),
+    colour=(0.22, 0.23, 0.24), band=(0.15, 0.16, 0.17))},
+    dict(SETS["loft_f"][1], name="Pants", faces={TRUNK: (7, 9), CROTCH: (0, 0), LEG: (0, 2)}, colour=(0.55, 0.48, 0.34),
+         offset=lambda part, ring: 0.007 if part != LEG else 0.014, bump=lambda part, ring, p: 0.0),
+    dict(SETS["loft_f"][2], faces={LEG: (6, 13)}, colour=(0.30, 0.20, 0.12), sole=(0.10, 0.08, 0.07),
+         offset=lambda part, ring: 0.012 if ring <= 9 else 0.016)]
+
 # f3: real armpit x 0.16 (ref_body RB_ARMPIT_X): the sleeve starts at the shoulder and ends where the sheet's sleeve
 # ends (x ~0.24), not 9 cm further out
 SETS["loft_f3"] = [{"name": "Shirt", "builder": "shirt_loft", "shirt": dict(
