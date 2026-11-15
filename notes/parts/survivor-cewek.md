@@ -397,3 +397,16 @@ setengahnya dinding dalam Solidify yang tidak pernah terlihat; potongan + bola s
   tidak ada lubang. Lutut satu cincin masih rapi saat jalan.
 - QA: `survivor_f_thin_lineup.png`, `survivor_fhv3_thin.png`, `survivor_fhv3_thin1_knee.png`, `survivor_fhv3_thin1_arm.png`.
 Sisa ke budget ~1900: kepala+rambut+telinga ~980, cincin kulit badan (ref_body), cincin baju (garment_loft).
+
+## Build game `--thin` tahap 2 (2026-11-15)
+
+User: "Lanjut turunkan". `CR_STATS=1 cut_rigid.py --thin` mencetak asal tris. fhv3 (4388): sumber 2772 (Character 624,
+Hair 584, Shirt 512, Pants 404, Head 232, Boots 236, Ears 176), bisect 284, **bola sendi 1140**, cap 212.
+- Bola: bidang potong lewat pivot, jadi loop potongan = ekuator; pita loop→ekuator luasnya nol (dibuang kalau
+  selisih < 2 mm). Cincin 50° pakai setengah titik (`BALL_HALF`, pita penuh→setengah = segitiga + quad). Bola 1140 → 664.
+- `head_female.py` menandai muka kepala di bawah rambut (`under_hair`, 56 tris) dan telinga yang tertutup tirai rambut
+  (v3 bob, v4 panjang: `ears=False` → prop `under_hair`). Ditandai, bukan dihapus: ref_body mengukur puncak dan lebar
+  kepala dari mesh ini. `--thin` membuangnya dan tidak menutup lubang kulit kepala (cap di kepala malah menambah 22–30).
+- Hasil: v3 3680, v4 3668, v5 3736 (+gear 4680), v6 3590, v7 3774. Close-up kepala sama dengan sebelumnya.
+- QA: `survivor_f_thin2_close.png`.
+Sisa terbesar: Character 624 (tangan 2 × ~200 dengan jari), Shirt 512, Pants 404, rambut 312–584.
