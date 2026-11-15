@@ -174,19 +174,35 @@ def main():
     a = ap.parse_args(argv)
     if a.thin and "CP_BALL_RINGS" not in os.environ:
         cp.BALL_RINGS = (50,)
+        cp.BALL_HALF = True
     rig = next(o for o in bpy.data.objects if o.type == "ARMATURE")
     srcs = [o for o in bpy.data.objects if o.type == "MESH" and o.parent == rig]
     cp.move_shoulders(rig)
     J = joints(rig)
     pieces = {}
+    tri = lambda o: sum(len(p.vertices) - 2 for p in o.data.polygons)
+    budget = {}   # where the triangles come from: source mesh, + bisect, + balls, + flat caps (CR_STATS=1)
+    if a.thin:   # never-seen head geometry (head_female.py tags): scalp under the hair, ears under a curtain
+        for ob in list(srcs):
+            if ob.get("under_hair"):
+                srcs.remove(ob)
+                bpy.data.objects.remove(ob)
+            elif "under_hair" in ob.data.attributes:
+                bm = bmesh.new(); bm.from_mesh(ob.data)
+                lay = bm.faces.layers.int.get("under_hair")
+                bmesh.ops.delete(bm, geom=[f for f in bm.faces if f[lay]], context="FACES")
+                bm.to_mesh(ob.data); bm.free()
     for ob in srcs:
         ob.modifiers.clear()
+        budget["src " + ob.name] = tri(ob)
         if ob.name in cp.HEAD_OBJS:
             parts = cp.face_parts(ob)
         else:
             if a.thin and ob.name in ("Shirt", "Pants", "Boots"):
                 print("THIN", ob.name, "inner faces dropped", drop_inner_wall(ob))
+            budget["src " + ob.name] = tri(ob)
             bisect_all(ob, J)
+            budget["bisect"] = budget.get("bisect", 0) + tri(ob) - budget["src " + ob.name]
             parts = body_parts(ob, J)
         for name, o in cp.split(ob, parts).items():
             pieces.setdefault(name, []).append(o)
@@ -204,10 +220,14 @@ def main():
             src = o.name.split("|")[1]
             if name == "neck" and src == "Character":
                 cp.neck_sink(o)
+            t0 = tri(o)
             if jc and src in BODY_OBJS:
                 n_ball += cp.ball_caps(o, jc, taken)
-            if src not in ("Eyes", "Hair", "Ears"):
+            t1 = tri(o)
+            if src not in ("Eyes", "Hair", "Ears") and not (a.thin and src == "Head"):   # thin: scalp hole stays open
                 n_cap += cp.cap(o, mid)
+            budget["balls"] = budget.get("balls", 0) + t1 - t0
+            budget["caps"] = budget.get("caps", 0) + tri(o) - t1
         bpy.ops.object.select_all(action="DESELECT")
         for o in obs:
             o.select_set(True)
@@ -226,6 +246,9 @@ def main():
     for k, (t, b, c) in stats.items():
         print(f"PART {k:12s} tris {t:4d} balls {b} caps {c}")
     print("TOTAL tris", sum(t for t, _, _ in stats.values()))
+    if os.environ.get("CR_STATS"):
+        for k, v in budget.items():
+            print(f"BUDGET {k:14s} {v}")
     bpy.ops.wm.save_as_mainfile(filepath=os.path.abspath(a.out))
 
 
