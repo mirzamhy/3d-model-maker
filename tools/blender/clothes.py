@@ -146,10 +146,12 @@ def garment(body, rig, spec, mat):
                 groups[n] = ob.vertex_groups.new(name=n)
             groups[n].add([v.index], g.weight, "REPLACE")
     # wall (closed shell); vertex groups and "src" are carried to the inner verts
+    ob.vertex_groups.new(name="wall_inner")   # Solidify fills an output group only if it exists
     m = ob.modifiers.new("wall", "SOLIDIFY")
     m.thickness = WALL
     m.offset = -1.0
     m.use_rim = True
+    m.shell_vertex_group = "wall_inner"   # cut_rigid --thin drops the inner shell for the game
     m.use_even_offset = False  # even offset thickens sharp folds (crotch, heel): the inner wall went 12 mm into the skin
     m.thickness_clamp = 0.5  # and no wall thicker than half the shortest edge
     bpy.context.view_layer.objects.active = ob

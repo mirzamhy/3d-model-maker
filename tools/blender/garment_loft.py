@@ -320,10 +320,12 @@ def shirt(body, rig, mat, spec=None):
                 groups[gname] = ob.vertex_groups.new(name=gname)
             groups[gname].add([v.index], w / s_, "REPLACE")
 
+    ob.vertex_groups.new(name="wall_inner")   # Solidify fills an output group only if it exists
     m = ob.modifiers.new("wall", "SOLIDIFY")
     m.thickness = WALL
     m.offset = -1.0
     m.use_rim = True
+    m.shell_vertex_group = "wall_inner"   # cut_rigid --thin drops the inner shell for the game
     m.use_even_offset = False
     bpy.context.view_layer.objects.active = ob
     bpy.ops.object.modifier_apply(modifier="wall")
