@@ -410,3 +410,12 @@ Hair 584, Shirt 512, Pants 404, Head 232, Boots 236, Ears 176), bisect 284, **bo
 - Hasil: v3 3680, v4 3668, v5 3736 (+gear 4680), v6 3590, v7 3774. Close-up kepala sama dengan sebelumnya.
 - QA: `survivor_f_thin2_close.png`.
 Sisa terbesar: Character 624 (tangan 2 × ~200 dengan jari), Shirt 512, Pants 404, rambut 312–584.
+
+## Tangan sarung tangan di build game (2026-11-15)
+
+User: "Coba sarung tangan". `cut_rigid.py --thin` → `mittens()`: muka jari (kode part 5, 104 tris per tangan) diganti satu
+blok: 3 cincin 6 titik di atas kotak jari (buku jari, 60 %, ujung menyempit 0.82 × 0.7) + ujung datar. Arah lebar =
+sebaran jari terbesar tegak lurus sumbu tangan. Lubang pangkal jari di telapak diisi datar (di dalam blok). Jempol tetap.
+Tangan 226 → 122 tris. Total v3 3552, v4 3540, v5 3608 (+gear 4552), v6 3462, v7 3646.
+Dari jauh terbaca sarung tangan/tinju; jempol tetap memberi siluet tangan.
+QA: `survivor_fhv3_mitten.png`, `survivor_f_thin3_lineup.png`.
