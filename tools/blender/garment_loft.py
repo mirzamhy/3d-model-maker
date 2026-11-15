@@ -120,7 +120,13 @@ def shirt(body, rig, mat, spec=None):
 
     def drape(z, th):  # largest body radius from the chest down to z
         m = (zs >= z - 1e-6) & (zs <= S["chest_z"] + 1e-6)
-        return float(np.nanmax(rb[th][m]))
+        hang = float(np.nanmax(rb[th][m]))
+        fit = S.get("fit", 0.0)   # fitted tee (female f2): follow the body (waist) instead of hanging straight
+        if fit and z < S["chest_z"] - 1e-6:
+            own = ray(z, th)
+            if own is not None:
+                return hang * (1 - fit) + own * fit
+        return hang
 
     rings, band_rows = [], []  # each ring: {th: (z, r)}
 
@@ -149,6 +155,8 @@ def shirt(body, rig, mat, spec=None):
 
     add(armpit)
     add(lambda th: (S["chest_z"], drape(S["chest_z"], th) + S["chest_ease"]))
+    if S.get("waist_z"):
+        add(lambda th: (S["waist_z"], drape(S["waist_z"], th) + S["belly_ease"]))
     add(lambda th: (S["belly_z"], drape(S["belly_z"], th) + S["belly_ease"]))
     hb, hz = S["hem_band"], S["hem_z"]
     add(lambda th: (hz + hb, drape(hz + hb, th) + S["hem_ease"]), True)
