@@ -114,6 +114,26 @@ def bisect_all(ob, J):
     bm.free()
 
 
+def drop_inner_wall(ob):
+    """Game build (--thin): delete the inner shell of a garment (Solidify output group "wall_inner"). The rim at the
+    openings stays (the cloth edge keeps its thickness); cap() later fills the loop at its inner edge."""
+    g = ob.vertex_groups.get("wall_inner")
+    if g is None:
+        return 0
+    inner = set()
+    for v in ob.data.vertices:
+        if any(x.group == g.index and x.weight > 0.5 for x in v.groups):
+            inner.add(v.index)
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    drop = [f for f in bm.faces if all(v.index in inner for v in f.verts)]
+    bmesh.ops.delete(bm, geom=drop, context="FACES")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    bm.to_mesh(ob.data)
+    bm.free()
+    return len(drop)
+
+
 def body_parts(ob, J):
     me = ob.data
     code = me.attributes["part"].data if "part" in me.attributes else None
@@ -149,7 +169,11 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:]
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
+    ap.add_argument("--thin", action="store_true",
+                    help="game build: garments without their inner wall, one ring per joint ball (6154 -> 4388 tris)")
     a = ap.parse_args(argv)
+    if a.thin and "CP_BALL_RINGS" not in os.environ:
+        cp.BALL_RINGS = (50,)
     rig = next(o for o in bpy.data.objects if o.type == "ARMATURE")
     srcs = [o for o in bpy.data.objects if o.type == "MESH" and o.parent == rig]
     cp.move_shoulders(rig)
@@ -160,6 +184,8 @@ def main():
         if ob.name in cp.HEAD_OBJS:
             parts = cp.face_parts(ob)
         else:
+            if a.thin and ob.name in ("Shirt", "Pants", "Boots"):
+                print("THIN", ob.name, "inner faces dropped", drop_inner_wall(ob))
             bisect_all(ob, J)
             parts = body_parts(ob, J)
         for name, o in cp.split(ob, parts).items():
