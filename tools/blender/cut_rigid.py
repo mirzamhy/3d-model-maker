@@ -134,6 +134,88 @@ def drop_inner_wall(ob):
     return len(drop)
 
 
+FINGER, THUMB = 5, 6
+
+
+def mittens(ob, rig):
+    """Game build (--thin): the four fingers (part code 5, ~104 tris per hand) become one mitten block, 3 rings of 6
+    over the finger box (knuckles, 60 %, tip) + a flat tip. The finger root holes in the palm are filled flat (inside
+    the block). The thumb stays."""
+    me = ob.data
+    mw = ob.matrix_world
+    mi = mw.inverted()
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    part = bm.faces.layers.int.get("part")
+    col = bm.faces.layers.float_color.get("Col")
+    n_old = len(bm.faces)
+    added = 0
+    for s in ("L", "R"):
+        b = rig.data.bones[f"hand.{s}"]
+        h0, h1 = rig.matrix_world @ b.head_local, rig.matrix_world @ b.tail_local
+        ax = (h1 - h0).normalized()
+        fs = [f for f in bm.faces if f[part] == FINGER and (mw @ f.calc_center_median() - h0).dot(ax) > 0
+              and ((mw @ f.calc_center_median()).x > 0) == (s == "L")]
+        if not fs:
+            continue
+        skin = tuple(fs[0][col]) if col else None
+        pts = [mw @ v.co for f in fs for v in f.verts]
+        # across = widest spread perpendicular to the axis (finger fan), thick = the rest
+        perp = [p - h0 - ax * (p - h0).dot(ax) for p in pts]
+        up = Vector((0, 0, 1)) - ax * ax.z
+        up.normalize()
+        side = ax.cross(up).normalized()
+        best = max(((side * math.cos(t) + up * math.sin(t)) for t in [i * math.pi / 18 for i in range(18)]),
+                   key=lambda d: max(q.dot(d) for q in perp) - min(q.dot(d) for q in perp))
+        acr = best.normalized()
+        thk = ax.cross(acr).normalized()
+        t_all = [(p - h0).dot(ax) for p in pts]
+        t0, t1 = min(t_all) - 0.007, max(t_all)
+        rings = []
+        for k, (tt, shrink_w, shrink_t) in enumerate(((0.0, 1.0, 1.0), (0.6, 1.0, 0.95), (1.0, 0.82, 0.7))):
+            t = t0 + (t1 - t0) * tt
+            near = [p for p, tp in zip(pts, t_all) if abs(tp - t) < 0.015] or pts
+            ws = [(p - h0).dot(acr) for p in near]
+            ts = [(p - h0).dot(thk) for p in near]
+            wc, tc = (max(ws) + min(ws)) / 2, (max(ts) + min(ts)) / 2
+            hw, ht_ = (max(ws) - min(ws)) / 2 * shrink_w + 0.002, (max(ts) - min(ts)) / 2 * shrink_t + 0.002
+            c = h0 + ax * t + acr * wc + thk * tc
+            ring = []
+            for a_, b_ in ((-1, 0), (-0.6, 1), (0.6, 1), (1, 0), (0.6, -1), (-0.6, -1)):
+                ring.append(bm.verts.new(mi @ (c + acr * hw * a_ + thk * ht_ * b_)))
+            rings.append(ring)
+        new = []
+        for r0, r1 in zip(rings, rings[1:]):
+            for i in range(6):
+                j = (i + 1) % 6
+                new.append(bm.faces.new((r0[i], r0[j], r1[j], r1[i])))
+        new.append(bm.faces.new(rings[-1]))
+        new.append(bm.faces.new(rings[0][::-1]))
+        cen = mi @ (h0 + ax * (t0 + t1) / 2)
+        for f in new:
+            f.normal_update()
+            if f.normal.dot(f.calc_center_median() - cen) < 0:
+                f.normal_flip()
+            f[part] = FINGER
+            if skin:
+                f[col] = skin
+        added += len(new)
+        bmesh.ops.delete(bm, geom=fs, context="FACES")
+    # finger root holes in the palm: flat fill (inside the block)
+    loose = [v for v in bm.verts if not v.link_faces]
+    bmesh.ops.delete(bm, geom=loose, context="VERTS")
+    res = bmesh.ops.holes_fill(bm, edges=[e for e in bm.edges if e.is_boundary and all(
+        any(f[part] == 4 for f in v.link_faces) for v in e.verts)], sides=12)
+    for f in res["faces"]:
+        if col:
+            nb = [g for e in f.edges for g in e.link_faces if g is not f]
+            if nb:
+                f[col] = nb[0][col]
+    bm.to_mesh(me)
+    bm.free()
+    return added
+
+
 def body_parts(ob, J):
     me = ob.data
     code = me.attributes["part"].data if "part" in me.attributes else None
@@ -198,6 +280,8 @@ def main():
         if ob.name in cp.HEAD_OBJS:
             parts = cp.face_parts(ob)
         else:
+            if a.thin and ob.name == "Character":
+                print("MITTEN faces", mittens(ob, rig))
             if a.thin and ob.name in ("Shirt", "Pants", "Boots"):
                 print("THIN", ob.name, "inner faces dropped", drop_inner_wall(ob))
             budget["src " + ob.name] = tri(ob)
