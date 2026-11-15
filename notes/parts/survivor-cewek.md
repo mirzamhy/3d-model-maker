@@ -383,3 +383,17 @@ Rambut (termasuk rambut panjang dan kepang) ikut part `head`. RB_HAIR tetap 0.11
 `parts_lineup.py`: satu kolom per karakter, pose relaxed, `--zoom 0.62` untuk close-up kepala.
 QA: `survivor_f_heads_lineup.png`, `survivor_f_heads_close.png`.
 Sisa: kuncir dua (v7) tertutup kepala dari depan/belakang (simetris, dicek); ujung kepang v5 tertutup tas.
+
+## Build game `--thin` (2026-11-15)
+
+Langkah 1 dari rencana "turunkan tris lalu ke game". Ukur dulu (fhv3, 6154 tris): baju = Shirt 912 + Pants 756 + Boots 440,
+setengahnya dinding dalam Solidify yang tidak pernah terlihat; potongan + bola sendi menambah ~2400.
+- `clothes.py` / `garment_loft.py`: Solidify menulis cangkang dalam ke grup `wall_inner` (grup harus dibuat dulu,
+  kalau tidak modifier tidak mengisinya: percobaan pertama 0 muka terbuang).
+- `cut_rigid.py --thin`: buang muka yang semua titiknya di `wall_inner` (rim di bukaan tetap, tepi kain tetap tebal;
+  `cap()` menutup loop di tepi dalam rim), dan bola sendi satu cincin (lat 50) bukan dua.
+  Percobaan heuristik "menjauh dari tulang" gagal: hanya sepertiga terbuang, sisanya bolong dan ditutup cap acak.
+- Hasil: v3 4388, v4 4376, v5 4276 (+gear 5220), v6 4078, v7 4314 (dari 5536–7002). Render jalan tidak berubah,
+  tidak ada lubang. Lutut satu cincin masih rapi saat jalan.
+- QA: `survivor_f_thin_lineup.png`, `survivor_fhv3_thin.png`, `survivor_fhv3_thin1_knee.png`, `survivor_fhv3_thin1_arm.png`.
+Sisa ke budget ~1900: kepala+rambut+telinga ~980, cincin kulit badan (ref_body), cincin baju (garment_loft).
