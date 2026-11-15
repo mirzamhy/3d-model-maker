@@ -296,6 +296,7 @@ for s_ in ("L", "R"):
                     (f"shin.{s_}", f"thigh.{s_}", f"shin.{s_}")]
 BALL_NEAR = 0.07
 BALL_LAT = math.radians(50)
+BALL_HALF = bool(os.environ.get("CP_BALL_HALF"))
 BALL_RINGS = tuple(int(x) for x in os.environ.get("CP_BALL_RINGS", "35,70").split(","))   # latitude of the rings above the equator; the pole ring is closed flat
 
 
@@ -361,7 +362,10 @@ def ball_caps(ob, joints, taken=None):
                 rv = rv * (rmax / rv.length)
             rad.append(rv)
         rm = sum(r.length for r in rad) / len(rad)
-        eq = [bm.verts.new(P + rv) for rv in rad]
+        # the cut plane runs through the pivot, so the loop usually IS the equator: no band of zero-area quads
+        # (they were ~2n triangles per ball, a quarter of all the joint triangles)
+        flat = max((x.co - (P + rv)).length for x, rv in zip(loop, rad)) < 0.002
+        eq = list(loop) if flat else [bm.verts.new(P + rv) for rv in rad]
         # rings toward the pole get rounder (radius blends to the mean), the pole is a flat n-gon: no spike tip
         # (a single tip over an uneven cuff loop came out as a spike when the knee bent)
         rings = [eq]
@@ -369,7 +373,8 @@ def ball_caps(ob, joints, taken=None):
             t = lat / 90.0
             cl, sl = math.cos(math.radians(lat)), math.sin(math.radians(lat))
             ring = []
-            for rv in rad:
+            # BALL_HALF (game build): the ring above the equator keeps every other point (the pole is flat anyway)
+            for rv in (rad[::2] if BALL_HALF and len(rad) >= 8 else rad):
                 if X is not None:
                     # hinge (knee, elbow, ankle): each point swings on a circle around the hinge axis, so the cap is a
                     # surface of revolution about that axis and keeps its outline at any bend. A round ball over an
@@ -385,8 +390,13 @@ def ball_caps(ob, joints, taken=None):
         k = len(loop)
         for i in range(k):
             j = (i + 1) % k
-            quads = [(loop[i], loop[j], eq[j], eq[i])]
-            quads += [(r0[i], r0[j], r1[j], r1[i]) for r0, r1 in zip(rings, rings[1:])]
+            quads = [] if flat else [(loop[i], loop[j], eq[j], eq[i])]
+            for r0, r1 in zip(rings, rings[1:]):
+                if len(r1) == len(r0):
+                    quads.append((r0[i], r0[j], r1[j], r1[i]))
+                else:   # full ring -> half ring: a triangle where both ends meet the same point, else a quad
+                    a_, b_ = i // 2, (j // 2) % len(r1)
+                    quads.append((r0[i], r0[j], r1[a_]) if a_ == b_ else (r0[i], r0[j], r1[b_], r1[a_]))
             for q in quads:
                 try:
                     new.append(bm.faces.new(q))
