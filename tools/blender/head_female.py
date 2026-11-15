@@ -55,11 +55,11 @@ VARIANTS = {
                      "M_CHIN": (0, 0, 1), "MC_OUT": (6, 0, -2), "C_BONE": (4, 0, 0), "N_WING": (3, 0, 0),
                      "L_CORNER": (3, 0, 0)}),
     # v3: auburn bob to the jaw with a fringe, light skin, round face
-    "v3": dict(hair="bob", locks=False, tone=(1.05, 1.0, 0.96), hair_col=(0.50, 0.22, 0.11),
+    "v3": dict(hair="bob", locks=False, ears=False, tone=(1.05, 1.0, 0.96), hair_col=(0.50, 0.22, 0.11),
                face={"CH_SIDE": (10, 0, 0), "CH_TOP": (6, 0, 0), "J_MID": (12, 0, 0), "MC_OUT": (8, 0, -2),
                      "M_CHB": (0, 4, 0), "M_CHIN": (0, 2, 0), "C_BONE": (2, 4, 0), "M_TIP": (0, 2, -3)}),
     # v4: long loose dirty blonde hair, middle parting, long narrow face, high cheekbones
-    "v4": dict(hair="long", locks=True, tone=(0.95, 0.92, 0.88), hair_col=(0.64, 0.50, 0.30), hp={"mid": 1.0},
+    "v4": dict(hair="long", locks=True, ears=False, tone=(0.95, 0.92, 0.88), hair_col=(0.64, 0.50, 0.30), hp={"mid": 1.0},
                face={"C_BONE": (6, -6, 0), "CH_SIDE": (-4, 4, 0), "M_CHB": (0, 8, 0), "M_CHIN": (0, 6, 0),
                      "CH_TOP": (-2, 4, 0), "J_MID": (-4, 4, 0), "N_WING": (-2, 0, 0)}),
     # v5: one braid down the back, near black hair, red tie, tan skin, wide cheek, small flat nose
@@ -276,6 +276,32 @@ def pigtails(bm, V):
         tie(bm, (sx * 0.068, -0.026, -0.083), (sx * 0.4, -1, 0), 0.020, V["tie"])
 
 
+def tag_scalp(head):
+    """Mark the head faces under the hair mass (same zone rule as head_trace.build_hair) with the FACE attribute
+    "under_hair": never seen, the hair shell and its skirt down to the hairline close over them. cut_rigid --thin
+    deletes them for the game; here they stay (ref_body measures the head top and width on this mesh)."""
+    zone = set()
+    for n in ht.HAIR_ZONE:
+        x, y, z = ht.to_m(*ht.TRACE[n])
+        for sx in (1, -1):
+            zone.add(tuple(np.round(ht.blender_co((x * sx, y, z)), 5)))
+    ear_c = ht.to_m(*ht.TRACE["EAR_C"])
+    ear_keys = {tuple(np.round(ht.blender_co((ear_c[0] * sx, ear_c[1], ear_c[2])), 5)) for sx in (1, -1)}
+    me = head.data
+    key = lambda co: tuple(np.round(co, 5))
+    a = me.attributes.new("under_hair", "INT", "FACE")
+    n = 0
+    for p in me.polygons:
+        vs = [me.vertices[i].co for i in p.vertices]
+        if not all(key(c) in zone for c in vs):
+            continue
+        if any(key(c) in ear_keys for c in vs) and ht._hc(p.center)[2] > ear_c[2] - 0.004:
+            continue   # in front of the ear root: build_hair leaves these bare
+        a.data[p.index].value = 1
+        n += 1
+    return n
+
+
 STYLES = {"bun": bun, "ponytail": ponytail, "bob": bob, "long": long_hair, "braid": braid, "pigtails": pigtails,
           "pixie": lambda bm, V: None}
 
@@ -295,6 +321,7 @@ def build(ears_path, variant="v1"):
     ht.HP.update(V.get("hp", {}))
     head = ht.build_head()
     hair = ht.build_hair(head)
+    n_scalp = tag_scalp(head)
     eyes = ht.eye_slits()
     ears = ears_base.copy(); ears.data = ears_base.data.copy(); ears.hide_render = False
     bpy.context.scene.collection.objects.link(ears)
@@ -326,7 +353,9 @@ def build(ears_path, variant="v1"):
     hm.set_col(head, lambda i, old: old / ht.SKIN * SKIN_F * tone)
     hm.set_col(ears, lambda i, old: SKIN_F * tone)
     hm.set_col(hair, hair_col)
-    print("FEMALE", variant, "head tris", len(head.data.polygons), "hair faces", len(hair.data.polygons),
+    if not V.get("ears", True):   # bob / long hair: the ears sit under the hair curtain (cut_rigid --thin drops them)
+        ears["under_hair"] = 1
+    print("FEMALE", variant, "scalp under hair", n_scalp, "ears hidden", bool(ears.get("under_hair")), "head tris", len(head.data.polygons), "hair faces", len(hair.data.polygons),
           "hair tris", sum(len(p.vertices) - 2 for p in hair.data.polygons))
     return head, hair, eyes, ears
 
